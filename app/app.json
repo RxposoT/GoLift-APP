@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "GoLift",
+    "slug": "GoLift",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/faviconGoLift.png",
+    "scheme": "golift",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0066FF",
+        "foregroundImage": "./assets/images/faviconGoLift.png"
+      },
+      "softwareKeyboardLayoutMode": "pan",
+      "predictiveBackGestureEnabled": false,
+      "package": "com.golift.app"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/faviconGoLift.png"},
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "62ad09ef-b35f-438e-9643-77c6e3a611e4"
+      }
+    }
+  }
+}

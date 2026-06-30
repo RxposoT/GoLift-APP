@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 16.0.0"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_IP": "goliftapp.me",
+        "EXPO_PUBLIC_IS_PRODUCTION": "true"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_IP": "goliftapp.me",
+        "EXPO_PUBLIC_IS_PRODUCTION": "true"
+      }
+    }
+  }
+}
