@@ -316,6 +316,39 @@ export default function Workouts() {
           </Text>
         </View>
 
+        {/* ── AI Plan Card ── */}
+        <Pressable
+          onPress={() => router.push('/ai-plan')}
+          style={({ pressed }) => ({
+            marginHorizontal: 24,
+            marginBottom: 20,
+            backgroundColor: theme.accent,
+            borderRadius: 20,
+            padding: 18,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 14,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <View style={{
+            width: 48, height: 48, borderRadius: 14,
+            backgroundColor: "rgba(255,255,255,0.2)",
+            justifyContent: "center", alignItems: "center",
+          }}>
+            <Ionicons name="sparkles" size={24} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: -0.3 }}>
+              Plano de Treino com IA
+            </Text>
+            <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 2 }}>
+              Cria um plano mensal à medida
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+        </Pressable>
+
         {/* Meus Treinos */}
         <View style={{ paddingHorizontal: 24 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>

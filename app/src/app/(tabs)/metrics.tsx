@@ -162,7 +162,7 @@ export default function Metrics() {
 
   function handleTabChange(tab: 'progresso' | 'calendario' | 'recordes' | 'ia') {
     if (tab === 'ia') {
-      router.push('/ai-hub');
+      router.push('/ai-report');
       return;
     }
     setActiveMetricsTab(tab);

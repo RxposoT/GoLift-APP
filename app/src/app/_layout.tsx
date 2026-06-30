@@ -81,13 +81,6 @@ function RootLayoutContent() {
               }}
             />
             <Stack.Screen
-              name="ai-hub"
-              options={{
-                presentation: "card",
-                animation: "slide_from_right"
-              }}
-            />
-            <Stack.Screen
               name="exercise-progress/[id]"
               options={{
                 presentation: "card",
