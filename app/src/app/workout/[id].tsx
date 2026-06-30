@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Pressable,
+  AppState,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -41,40 +42,51 @@ export default function WorkoutActive() {
   const [exercicios, setExercicios] = useState<ExercicioAtivo[]>([]);
   const [tempoDecorrido, setTempoDecorrido] = useState(0);
   const [timerPaused, setTimerPaused] = useState(false);
-  const timerPausedRef = useRef(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const timerRef = useRef<number | null>(null);
+  const tickRef = useRef<number | null>(null);
   const restTimerRef = useRef<number | null>(null);
   const [restTimer, setRestTimer] = useState<number | null>(null);
-  const [restDefault, setRestDefault] = useState(90); // segundos
+  const [restDefault, setRestDefault] = useState(90);
+
+  const startTimeRef = useRef(Date.now());
+  const pausedDurationRef = useRef(0);
+  const pausedAtRef = useRef<number | null>(null);
 
   // Partilha de resultados — gerida no ecrã summary
 
-  // Sync timerPaused state → ref so the interval closure always reads current value
-  useEffect(() => {
-    timerPausedRef.current = timerPaused;
-  }, [timerPaused]);
-
   useEffect(() => {
     loadWorkout();
-    // Try to load rest duration from active plan
     planoApi
       .getPlan(user!.id)
       .then((d: any) => {
         if (d?.descanso_segundos) setRestDefault(d.descanso_segundos);
       })
       .catch(() => {});
-    startTimer();
+    startTimeRef.current = Date.now();
+    startTick();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && timerPaused) {
+        // App voltou ao ativo enquanto pausado — regista retorno
+      } else if (state === 'background' || state === 'inactive') {
+        // App foi para background
+      }
+    });
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (tickRef.current) clearInterval(tickRef.current);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
+      sub.remove();
     };
   }, []);
 
-  function startTimer() {
-    timerRef.current = setInterval(() => {
-      if (!timerPausedRef.current) {
-        setTempoDecorrido((prev: number) => prev + 1);
+  function getElapsed(): number {
+    return Math.floor((Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000);
+  }
+
+  function startTick() {
+    if (tickRef.current) clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => {
+      if (!timerPaused) {
+        setTempoDecorrido(getElapsed());
       }
     }, 1000) as unknown as number;
   }
