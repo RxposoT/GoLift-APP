@@ -24,8 +24,8 @@
 | **Notificações Push** | **60%** | [AGENTE B → background] | `feat/notifications` |
 | **Testes (Unit + Integration)** | **30%** | [AGENTE A → background] | `feat/tests` |
 | **CI/CD (GitHub Actions + EAS)** | **100%** | **Concluído** | `main` |
-| Offline-First (Cache Local) | 0% | Pendente | `feat/offline` |
-| Offline-First (Cache Local) | 0% | Pendente | `feat/offline` |
+| Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
+| Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
 
 ---
 
@@ -35,7 +35,8 @@
 |--------|-------------|--------|--------|
 | Notificações Push | Agente B (background) | `feat/notifications` | ⏳ Continuar: Edge Function + streak/report |
 | Testes Unit + Integration | Agente A (background) | `feat/tests` | ⏳ Continuar: @types/jest + npm test passing |
-| CI/CD | Coordenador | `feat/ci-cd` | ✅ Entregue: GitHub Actions + EAS dev profile |
+| CI/CD | Coordenador | `main` | ✅ Entregue: GitHub Actions + EAS dev profile |
+| Offline-First | Coordenador | `main` | ✅ Entregue: cache + sync queue + offline banner |
 
 ---
 
