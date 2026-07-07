@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   Pressable,
@@ -10,6 +9,7 @@ import {
   Modal,
   Animated,
 } from "react-native";
+import { Text, Card } from "../../components/ui";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -25,6 +25,7 @@ import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { getIMCCategory } from "../../utils/imc";
 import { ProfileScreenSkeleton } from "../../components/ui/SkeletonLoader";
+import { IMC_COLORS, BADGE_COLORS } from "../../styles/colors";
 
 interface Badge {
   id: string;
@@ -83,13 +84,13 @@ function generateStreakWeek(): WeekDay[] {
 }
 
 const IMC_SEGMENTS: Array<{ color: string; from: number; to: number }> = [
-  { color: "#6b7280", from: 14, to: 18.5 },
-  { color: "#10b981", from: 18.5, to: 25 },
-  { color: "#84cc16", from: 25, to: 27.5 },
-  { color: "#f59e0b", from: 27.5, to: 30 },
-  { color: "#f97316", from: 30, to: 35 },
-  { color: "#ef4444", from: 35, to: 40 },
-  { color: "#991b1b", from: 40, to: 42 },
+  { color: IMC_COLORS.underweight, from: 14, to: 18.5 },
+  { color: IMC_COLORS.normal, from: 18.5, to: 25 },
+  { color: IMC_COLORS.borderline, from: 25, to: 27.5 },
+  { color: IMC_COLORS.overweight, from: 27.5, to: 30 },
+  { color: IMC_COLORS.obese1, from: 30, to: 35 },
+  { color: IMC_COLORS.obese2, from: 35, to: 40 },
+  { color: IMC_COLORS.obese3, from: 40, to: 42 },
 ];
 const IMC_TOTAL = 42 - 14;
 
@@ -101,16 +102,16 @@ function computeBadges(
   planoTipo: "free" | "pago"
 ): Omit<Badge, "unlockedAt">[] {
   return [
-    { id: "first_step",   icon: "flag",         color: "#10b981", name: "Primeiro Passo",    description: "Completaste o teu primeiro treino",    unlocked: totalWorkouts >= 1,   lockHint: "Completa 1 treino" },
-    { id: "perfect_week", icon: "flame",        color: "#f59e0b", name: "Semana Perfeita",    description: "7 dias consecutivos de treino",        unlocked: maxStreak >= 7,       lockHint: "Treina 7 dias seguidos" },
-    { id: "unstoppable",  icon: "flash",        color: "#8B5CF6", name: "Imparável",          description: "14 dias consecutivos de treino",       unlocked: maxStreak >= 14,      lockHint: "Treina 14 dias seguidos" },
-    { id: "dedicated",    icon: "fitness",      color: "#0A84FF", name: "Dedicado",            description: "25 treinos completados",              unlocked: totalWorkouts >= 25,  lockHint: "Completa 25 treinos" },
-    { id: "veteran",      icon: "trophy",       color: "#30D158", name: "Veterano",            description: "50 treinos completados",              unlocked: totalWorkouts >= 50,  lockHint: "Completa 50 treinos" },
-    { id: "centurion",    icon: "ribbon",       color: "#FF9500", name: "Centenário",          description: "100 treinos completados",             unlocked: totalWorkouts >= 100, lockHint: "Completa 100 treinos" },
-    { id: "marathoner",   icon: "timer",        color: "#a78bfa", name: "Maratonista",         description: "50 horas de treino acumuladas",       unlocked: totalTimeSec >= 50 * 3600, lockHint: "Acumula 50h de treino" },
-    { id: "elite",        icon: "medal",        color: "#FFD700", name: "Atleta de Elite",     description: "Primeiro recorde pessoal registado",  unlocked: recordsCount >= 1,    lockHint: "Regista um recorde pessoal" },
-    { id: "progress",     icon: "trending-up",  color: "#FF6B6B", name: "Em Progresso",        description: "3 recordes pessoais diferentes",      unlocked: recordsCount >= 3,    lockHint: "Regista 3 recordes diferentes" },
-    { id: "pro",          icon: "star",         color: "#8B5CF6", name: "Membro Pro",          description: "Subscrição GoLift Pro activa",         unlocked: planoTipo === "pago", lockHint: "Activa o GoLift Pro" },
+    { id: "first_step",   icon: "flag",         color: BADGE_COLORS.common,     name: "Primeiro Passo",    description: "Completaste o teu primeiro treino",    unlocked: totalWorkouts >= 1,   lockHint: "Completa 1 treino" },
+    { id: "perfect_week", icon: "flame",        color: BADGE_COLORS.streak,     name: "Semana Perfeita",    description: "7 dias consecutivos de treino",        unlocked: maxStreak >= 7,       lockHint: "Treina 7 dias seguidos" },
+    { id: "unstoppable",  icon: "flash",        color: BADGE_COLORS.rare,       name: "Imparável",          description: "14 dias consecutivos de treino",       unlocked: maxStreak >= 14,      lockHint: "Treina 14 dias seguidos" },
+    { id: "dedicated",    icon: "fitness",      color: BADGE_COLORS.accent,     name: "Dedicado",            description: "25 treinos completados",              unlocked: totalWorkouts >= 25,  lockHint: "Completa 25 treinos" },
+    { id: "veteran",      icon: "trophy",       color: BADGE_COLORS.veteran,    name: "Veterano",            description: "50 treinos completados",              unlocked: totalWorkouts >= 50,  lockHint: "Completa 50 treinos" },
+    { id: "centurion",    icon: "ribbon",       color: BADGE_COLORS.milestone,  name: "Centenário",          description: "100 treinos completados",             unlocked: totalWorkouts >= 100, lockHint: "Completa 100 treinos" },
+    { id: "marathoner",   icon: "timer",        color: BADGE_COLORS.epic,       name: "Maratonista",         description: "50 horas de treino acumuladas",       unlocked: totalTimeSec >= 50 * 3600, lockHint: "Acumula 50h de treino" },
+    { id: "elite",        icon: "medal",        color: BADGE_COLORS.legendary,  name: "Atleta de Elite",     description: "Primeiro recorde pessoal registado",  unlocked: recordsCount >= 1,    lockHint: "Regista um recorde pessoal" },
+    { id: "progress",     icon: "trending-up",  color: BADGE_COLORS.progress,   name: "Em Progresso",        description: "3 recordes pessoais diferentes",      unlocked: recordsCount >= 3,    lockHint: "Regista 3 recordes diferentes" },
+    { id: "pro",          icon: "star",         color: BADGE_COLORS.pro,        name: "Membro Pro",          description: "Subscrição GoLift Pro activa",         unlocked: planoTipo === "pago", lockHint: "Activa o GoLift Pro" },
   ];
 }
 

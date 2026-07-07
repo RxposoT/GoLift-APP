@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-07T00:00:00Z",
+  "title": "Design System: GoLift",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "System Blue",
+        "canonical": "oklch(50% 0.17 260)",
+        "tonalRamp": [
+          "oklch(15% 0.06 260)",
+          "oklch(25% 0.10 260)",
+          "oklch(35% 0.14 260)",
+          "oklch(45% 0.17 260)",
+          "oklch(50% 0.17 260)",
+          "oklch(60% 0.15 260)",
+          "oklch(70% 0.11 260)",
+          "oklch(85% 0.05 260)"
+        ]
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "System Blue Dark",
+        "canonical": "oklch(60% 0.19 255)",
+        "tonalRamp": [
+          "oklch(15% 0.06 255)",
+          "oklch(25% 0.10 255)",
+          "oklch(35% 0.14 255)",
+          "oklch(50% 0.17 255)",
+          "oklch(60% 0.19 255)",
+          "oklch(70% 0.15 255)",
+          "oklch(80% 0.10 255)",
+          "oklch(90% 0.05 255)"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "oklch(96.5% 0 0)",
+        "tonalRamp": [
+          "oklch(15% 0 0)",
+          "oklch(30% 0 0)",
+          "oklch(45% 0 0)",
+          "oklch(60% 0 0)",
+          "oklch(75% 0 0)",
+          "oklch(85% 0 0)",
+          "oklch(96.5% 0 0)",
+          "oklch(98% 0 0)"
+        ]
+      },
+      "bg-dark": {
+        "role": "neutral",
+        "displayName": "Canvas Dark",
+        "canonical": "oklch(5% 0 0)",
+        "tonalRamp": [
+          "oklch(5% 0 0)",
+          "oklch(12% 0 0)",
+          "oklch(20% 0 0)",
+          "oklch(30% 0 0)",
+          "oklch(45% 0 0)",
+          "oklch(60% 0 0)",
+          "oklch(75% 0 0)",
+          "oklch(85% 0 0)"
+        ]
+      },
+      "accent-green": {
+        "role": "tertiary",
+        "displayName": "Completion Green",
+        "canonical": "oklch(60% 0.20 145)",
+        "tonalRamp": [
+          "oklch(15% 0.06 145)",
+          "oklch(25% 0.10 145)",
+          "oklch(40% 0.15 145)",
+          "oklch(50% 0.18 145)",
+          "oklch(60% 0.20 145)",
+          "oklch(70% 0.15 145)",
+          "oklch(80% 0.10 145)",
+          "oklch(92% 0.05 145)"
+        ]
+      },
+      "streak": {
+        "role": "semantic",
+        "displayName": "Streak Orange",
+        "canonical": "oklch(70% 0.16 50)",
+        "tonalRamp": [
+          "oklch(15% 0.06 50)",
+          "oklch(30% 0.10 50)",
+          "oklch(45% 0.14 50)",
+          "oklch(55% 0.16 50)",
+          "oklch(65% 0.17 50)",
+          "oklch(70% 0.16 50)",
+          "oklch(80% 0.12 50)",
+          "oklch(90% 0.06 50)"
+        ]
+      },
+      "amber": {
+        "role": "semantic",
+        "displayName": "AI Amber",
+        "canonical": "oklch(65% 0.15 75)",
+        "tonalRamp": [
+          "oklch(15% 0.05 75)",
+          "oklch(30% 0.08 75)",
+          "oklch(45% 0.12 75)",
+          "oklch(55% 0.14 75)",
+          "oklch(65% 0.15 75)",
+          "oklch(75% 0.12 75)",
+          "oklch(85% 0.08 75)",
+          "oklch(95% 0.04 75)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero headlines only. User names, achievement callouts. 1-2 per screen maximum."
+      },
+      "title1": {
+        "displayName": "Title 1",
+        "purpose": "Primary screen titles, modal headers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading size. Most content, descriptions, paragraphs. Max line length 65ch."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Badge labels, tab indicators, small UI tags. Always uppercase."
+      }
+    },
+    "shadows": [
+      {
+        "name": "elevation-1",
+        "value": "0 1px 2px rgba(0,0,0,0.06)",
+        "purpose": "Subtle lift for small inset-adjacent elements."
+      },
+      {
+        "name": "elevation-2",
+        "value": "0 2px 4px rgba(0,0,0,0.10)",
+        "purpose": "Default card elevation. Cards above the background canvas."
+      },
+      {
+        "name": "elevation-3",
+        "value": "0 4px 12px rgba(0,0,0,0.15)",
+        "purpose": "Modal, action sheet, floating UI elevation."
+      },
+      {
+        "name": "elevation-2-dark",
+        "value": "0 2px 4px rgba(0,0,0,0.30)",
+        "purpose": "Default card elevation in dark mode (higher opacity for contrast)."
+      },
+      {
+        "name": "elevation-3-dark",
+        "value": "0 4px 12px rgba(0,0,0,0.30)",
+        "purpose": "Modal elevation in dark mode."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default easing for state transitions."
+      },
+      {
+        "name": "duration-skeleton",
+        "value": "800ms",
+        "purpose": "Skeleton shimmer pulse cycle duration."
+      },
+      {
+        "name": "duration-stagger",
+        "value": "50ms",
+        "purpose": "Per-item stagger delay for list entrance animations."
+      },
+      {
+        "name": "duration-entrance",
+        "value": "350ms",
+        "purpose": "Standard entrance animation duration."
+      },
+      {
+        "name": "spring-damping",
+        "value": "10",
+        "purpose": "Spring damping for press interactions and tab animations."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary call-to-action. Blue background, white text, generous radius.",
+      "html": "<button class=\"ds-btn-primary\">COMEÇAR</button>",
+      "css": ".ds-btn-primary { background: #005CE6; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; padding: 12px 20px; border: none; border-radius: 20px; transition: opacity 0.2s ease; cursor: pointer; -webkit-tap-highlight-color: transparent; } .ds-btn-primary:hover { opacity: 0.7; } .ds-btn-primary:active { opacity: 0.7; transform: scale(0.97); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary action. Surface-toned, ink text, sits beside primary.",
+      "html": "<button class=\"ds-btn-secondary\">CANCELAR</button>",
+      "css": ".ds-btn-secondary { background: #fff; color: #000; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; padding: 12px 20px; border: 1px solid #F2F2F7; border-radius: 20px; transition: opacity 0.2s ease; cursor: pointer; } .ds-btn-secondary:hover { opacity: 0.7; } .ds-btn-secondary:active { opacity: 0.7; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Text-only action with no container. Tertiary flows, skip links.",
+      "html": "<button class=\"ds-btn-ghost\">SALTAR</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #005CE6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; padding: 12px 20px; border: none; border-radius: 20px; cursor: pointer; } .ds-btn-ghost:hover { opacity: 0.7; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmation. Red background, white text.",
+      "html": "<button class=\"ds-btn-danger\">ELIMINAR</button>",
+      "css": ".ds-btn-danger { background: #FF3B30; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; padding: 12px 20px; border: none; border-radius: 20px; transition: opacity 0.2s ease; cursor: pointer; } .ds-btn-danger:hover { opacity: 0.7; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Filled input with border stroke, focus accent shift, optional icon and password toggle.",
+      "html": "<div class=\"ds-input-wrapper\"><label class=\"ds-input-label\">Email</label><div class=\"ds-input-container\"><input class=\"ds-input\" type=\"email\" placeholder=\"teu@email.com\" value=\"\"></div></div>",
+      "css": ".ds-input-wrapper { display: flex; flex-direction: column; gap: 4px; width: 100%; } .ds-input-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.1px; color: #6C6C70; } .ds-input-container { display: flex; align-items: center; background: #fff; border: 1px solid #E5E5EA; border-radius: 10px; padding: 0 12px; transition: border-color 0.2s ease; } .ds-input-container:focus-within { border-color: #005CE6; } .ds-input { flex: 1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: 400; color: #000; background: transparent; border: none; outline: none; padding: 12px 0; } .ds-input::placeholder { color: #AEAEB2; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Surface container with generous radius. Tonal separation from background. No border by default.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-content\">Conteúdo do card</div></div>",
+      "css": ".ds-card { background: #fff; border-radius: 20px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.10); width: 100%; } .ds-card-content { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; color: #000; }"
+    },
+    {
+      "name": "Empty State",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Centered placeholder with circular icon container, title, subtitle, optional CTA.",
+      "html": "<div class=\"ds-empty\"><div class=\"ds-empty-icon\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 28 28\" fill=\"none\"><path d=\"M14 3C9 3 6 6 6 10v4c0 4 3 7 8 7s8-3 8-7v-4c0-4-3-7-8-7z\" stroke=\"#AEAEB2\" stroke-width=\"2\" fill=\"none\"/><path d=\"M10 17c0 3 2 5 4 5s4-2 4-5\" stroke=\"#AEAEB2\" stroke-width=\"2\" fill=\"none\"/></svg></div><h3 class=\"ds-empty-title\">Nada aqui ainda</h3><p class=\"ds-empty-subtitle\">Começa por criar o teu primeiro treino</p></div>",
+      "css": ".ds-empty { display: flex; flex-direction: column; align-items: center; padding: 48px 24px; text-align: center; } .ds-empty-icon { width: 64px; height: 64px; border-radius: 32px; background: #E5E5EA; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; } .ds-empty-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #000; margin: 0 0 8px; } .ds-empty-subtitle { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; font-weight: 400; color: #6C6C70; margin: 0; max-width: 280px; }"
+    },
+    {
+      "name": "Streak Bar",
+      "kind": "custom",
+      "refersTo": "card-default",
+      "description": "Weekly streak indicator. 7 day pills, completed = blue, today = outline, future = muted. Signature component.",
+      "html": "<div class=\"ds-streak\"><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">S</span><div class=\"ds-streak-pill ds-streak-done\"></div></div><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">T</span><div class=\"ds-streak-pill ds-streak-done\"></div></div><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">Q</span><div class=\"ds-streak-pill ds-streak-done\"></div></div><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">Q</span><div class=\"ds-streak-pill ds-streak-done\"></div></div><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">S</span><div class=\"ds-streak-pill ds-streak-done\"></div></div><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">S</span><div class=\"ds-streak-pill ds-streak-today\"></div></div><div class=\"ds-streak-day\"><span class=\"ds-streak-label\">D</span><div class=\"ds-streak-pill ds-streak-empty\"></div></div></div>",
+      "css": ".ds-streak { display: flex; flex-direction: row; gap: 6px; width: 100%; justify-content: center; } .ds-streak-day { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; } .ds-streak-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #6C6C70; } .ds-streak-pill { height: 36px; border-radius: 10px; width: 100%; } .ds-streak-done { background: #005CE6; } .ds-streak-today { background: transparent; border: 2px solid #005CE6; } .ds-streak-empty { background: #E5E5EA; opacity: 0.4; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Powerhouse",
+    "overview": "GoLift is a premium fitness companion that earns its place on the home screen through restraint, not flash. Every pixel serves the training session: fast access to logs, glanceable metrics, and the satisfying weight of a streak maintained. The aesthetic is Apple Fitness+ if it were built for data-driven trainees — deep dark mode canvas, sparing use of the blue accent, typography that commands without shouting. This system explicitly rejects the 'fitness bro' visual culture: no neon gradients, no shredded silhouettes, no aggressive badges. It also rejects SaaS-generic warm neutrals and over-gamified toy interfaces. The app feels expensive because it's quiet — the data does the talking.",
+    "keyCharacteristics": [
+      "Dark-mode primary. The app lives in gyms, early mornings, low light. Dark surfaces are the hero; light mode is a clean, faithful adaptation.",
+      "One accent, used sparingly. The blue (#005CE6 / #0A84FF) appears on ≤15% of any screen — primary actions, active states, the streak ring. Its rarity gives it weight.",
+      "Generous geometry. 20px corner radius on cards, 10px on inputs, 12-20px button padding — nothing feels sharp or rushed.",
+      "Typography as architecture. Heavy weights (800) at large sizes for hierarchy. Tight letter-spacing (-2 to -0.5) for a confident, condensed feel. No decorative fonts.",
+      "Haptic as a design material. Buttons, interactions, and state changes use haptic feedback (light/medium impact) as a tactile signal layer."
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "The blue accent never competes. Only one accent color exists. If something is interactive, it uses the blue or inherits the default text color. No secondary accent, no warm alternative. The blue's rarity (≤15% per screen) is its power.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Data-Color Rule",
+        "body": "Semantic states (completed, pending, error, locked) use their own colors, not the accent. Green = done, red = error, gray = locked/unavailable. Blue = action. Never mix the two.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Custom-Font Rule",
+        "body": "GoLift uses the system font stack exclusively. No custom typography. Custom fonts add loading latency, layout shift, and platform rendering inconsistencies for zero functional gain in a data-forward fitness app.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tight Tracking Rule",
+        "body": "At display sizes (≥20px), tracking is always negative (-0.3 to -2). Positive tracking is reserved for the caption variant only (uppercase labels at 11px, +1 tracking).",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "Surfaces start flat. Shadows appear only as a response to hierarchy need — cards on a background canvas get level 2; everything else stays flat. Never add a shadow to a surface that is already differentiated by color.",
+        "section": "elevation"
+      },
+      {
+        "name": "Badge & Tier Colors Exception",
+        "body": "Achievement badges, medal positions, and IMC health segments use a multi-color palette by design — each color carries tier/severity information that blue alone cannot convey. These are the only zones where the palette expands beyond the single accent. Medals: gold (#f59e0b), silver (#94a3b8), bronze (#cd7f32). Badge rarities: common = blue, rare = purple (#BF5AF2) or orange (#FF9F0A), locked = gray. IMC health bar: 7-step gray → green → amber → red ramp. Password strength: red → amber → green.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do use dark mode as the primary design target. The app is used in gyms, early mornings, and low-light environments.",
+      "Do keep the blue accent to ≤15% of any screen. Its rarity gives it meaning.",
+      "Do use the system font stack exclusively.",
+      "Do use haptic feedback (light impact) for button presses and state changes.",
+      "Do keep cards flat at rest. Elevation is for hierarchy, not default.",
+      "Do use generous corner radius (20px for cards, 10-14px for buttons and inputs).",
+      "Do animate with purpose — state changes, feedback, and transition guidance only.",
+      "Do respect prefers-reduced-motion: every animation must degrade gracefully.",
+      "Do verify body text contrast hits ≥4.5:1 against its background in both themes."
+    ],
+    "donts": [
+      "Don't use gradient text (background-clip: text). Use a single solid color.",
+      "Don't use side-stripe borders (border-left/border-right >1px as a colored accent).",
+      "Don't pair the accent blue with warm colors or secondary accents.",
+      "Don't use neon, aggressive, or 'fitness bro' visual language.",
+      "Don't over-gamify. Streaks, XP, and levels should feel earned and data-driven, not like a children's toy.",
+      "Don't use the cream/warm-neutral body background that has become the default AI aesthetic.",
+      "Don't use decorative glassmorphism.",
+      "Don't use the hero-metric template (big number, small label, supporting stats) as a layout pattern.",
+      "Don't use numbered section markers (01 / 02 / 03) as decorative scaffolding.",
+      "Don't use tiny uppercase tracked eyebrow headers above every section.",
+      "Don't use z-index values like 999 or 9999 — use the semantic scale.",
+      "Don't nest cards."
+    ]
+  }
+}

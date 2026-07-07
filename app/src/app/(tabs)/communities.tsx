@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   Pressable,
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { Text } from "../../components/ui";
 import { useCommunities } from "../../contexts/CommunitiesContext";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
