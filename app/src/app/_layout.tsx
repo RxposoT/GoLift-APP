@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import * as NavigationBar from "expo-navigation-bar";
+import * as Notifications from "expo-notifications";
 import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PostHogProvider } from "posthog-react-native";
@@ -25,6 +26,27 @@ function RootLayoutContent() {
       NavigationBar.setButtonStyleAsync("light");
     }
   }, [theme.background]);
+
+  useEffect(() => {
+    // Configure foreground notification behaviour
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
+    // Handle notification tap — navigates to tabs
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.screen) {
+        // Future: deep link to specific screens
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
 
   return (
     <AuthProvider>
