@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
-import { metricsApi, userApi, planoApi } from "../../services/api";
+import { metricsApi, userApi, planoApi, weightApi } from "../../services/api";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { MetricsScreenSkeleton } from "../../components/ui/SkeletonLoader";
@@ -124,6 +124,22 @@ export default function Metrics() {
   }
 
   async function loadWeightHistory(currentWeight?: number) {
+    // Tentar carregar do backend primeiro
+    if (user?.id) {
+      try {
+        const backend = await weightApi.getHistory(user.id);
+        if (backend.length > 0) {
+          setWeightHistory(backend);
+          // Atualizar AsyncStorage como cache
+          await AsyncStorage.setItem('@golift:weight_history', JSON.stringify(backend));
+          return;
+        }
+      } catch {
+        // Backend ainda sem tabela — fallback para AsyncStorage
+      }
+    }
+
+    // Fallback: AsyncStorage local
     try {
       const stored = await AsyncStorage.getItem('@golift:weight_history');
       const parsed = stored ? JSON.parse(stored) : [];
@@ -139,7 +155,7 @@ export default function Metrics() {
   }
 
   async function saveCurrentWeekWeight() {
-    if (!profile?.peso) return;
+    if (!profile?.peso || !user?.id) return;
     const currentWeek = getCurrentWeekKey();
     const next = [...weightHistory];
     const index = next.findIndex((item) => item.week === currentWeek);
@@ -154,6 +170,9 @@ export default function Metrics() {
       .slice(-8);
     setWeightHistory(normalized);
     await AsyncStorage.setItem('@golift:weight_history', JSON.stringify(normalized));
+
+    // Sync com backend (fire-and-forget — não bloqueia UI)
+    weightApi.upsertEntry(user.id, currentWeek, Number(profile.peso)).catch(() => {});
   }
 
   function handleTabChange(tab: 'progresso' | 'calendario' | 'recordes' | 'ia') {
@@ -372,34 +391,45 @@ export default function Metrics() {
       return null;
     }
 
-    const currentWeight = profile.peso;
-    const targetWeight = profile.pesoAlvo;
-    
-    const weightDifference = Math.abs(currentWeight - targetWeight);
-    
+    const currentWeight = Number(profile.peso);
+    const targetWeight = Number(profile.pesoAlvo);
+
+    // Usar o primeiro registo do histórico como ponto de partida, ou o peso atual
+    const startWeight = weightHistory.length >= 2
+      ? Number(weightHistory[0].weight)
+      : currentWeight;
+
+    // Se está a perder peso (target < current)
     if (targetWeight < currentWeight) {
-      return { 
-        percentage: 0, 
-        difference: weightDifference, 
+      const totalToLose = startWeight - targetWeight;
+      const lostSoFar = startWeight - currentWeight;
+      const pct = totalToLose > 0 ? Math.min((lostSoFar / totalToLose) * 100, 100) : 0;
+      return {
+        percentage: pct,
+        difference: currentWeight - targetWeight,
         direction: "down" as const,
-        message: `Precisa perder ${weightDifference.toFixed(1)}kg`
+        message: `Faltam ${(currentWeight - targetWeight).toFixed(1)}kg`,
       };
     }
-    
+
+    // Se está a ganhar peso (target > current)
     if (targetWeight > currentWeight) {
-      return { 
-        percentage: 0, 
-        difference: weightDifference, 
+      const totalToGain = targetWeight - startWeight;
+      const gainedSoFar = currentWeight - startWeight;
+      const pct = totalToGain > 0 ? Math.min((gainedSoFar / totalToGain) * 100, 100) : 0;
+      return {
+        percentage: pct,
+        difference: targetWeight - currentWeight,
         direction: "up" as const,
-        message: `Precisa ganhar ${weightDifference.toFixed(1)}kg`
+        message: `Faltam ${(targetWeight - currentWeight).toFixed(1)}kg`,
       };
     }
-    
-    return { 
-      percentage: 100, 
-      difference: 0, 
+
+    return {
+      percentage: 100,
+      difference: 0,
       direction: "none" as const,
-      message: "Objetivo atingido!"
+      message: "Objetivo atingido!",
     };
   }
 
