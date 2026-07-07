@@ -958,6 +958,95 @@ export default function Profile() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Time picker modal */}
+      <Modal visible={showTimePicker} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: safeBottom + 20 }}>
+            <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingBottom: 16 }}>
+              <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>Hora do Lembrete</Text>
+              <Pressable
+                onPress={() => setShowTimePicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+                style={({ pressed }) => ({ backgroundColor: theme.backgroundTertiary, borderRadius: 12, padding: 8, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Ionicons name="close" size={18} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 20, gap: 20 }}>
+              {/* Hours */}
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" }}>Hora</Text>
+                <Pressable
+                  onPress={() => handleTimeChange((reminderHour + 1) % 24, reminderMinute)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-up" size={28} color={theme.text} />
+                </Pressable>
+                <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14, marginVertical: 8 }}>
+                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800", letterSpacing: -1 }}>
+                    {String(reminderHour).padStart(2, "0")}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => handleTimeChange(reminderHour === 0 ? 23 : reminderHour - 1, reminderMinute)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-down" size={28} color={theme.text} />
+                </Pressable>
+              </View>
+
+              <Text style={{ color: theme.text, fontSize: 42, fontWeight: "300", marginBottom: 30 }}>:</Text>
+
+              {/* Minutes */}
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" }}>Min</Text>
+                <Pressable
+                  onPress={() => handleTimeChange(reminderHour, (reminderMinute + 5) % 60)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-up" size={28} color={theme.text} />
+                </Pressable>
+                <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14, marginVertical: 8 }}>
+                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800", letterSpacing: -1 }}>
+                    {String(reminderMinute).padStart(2, "0")}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => handleTimeChange(reminderHour, reminderMinute === 0 ? 55 : reminderMinute - 5)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-down" size={28} color={theme.text} />
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => setShowTimePicker(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Confirmar hora"
+              style={({ pressed }) => ({
+                backgroundColor: theme.accent,
+                borderRadius: 16,
+                paddingVertical: 16,
+                marginHorizontal: 24,
+                marginTop: 12,
+                alignItems: "center",
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Confirmar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
