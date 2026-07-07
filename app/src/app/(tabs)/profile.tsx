@@ -16,6 +16,11 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../contexts/AuthContext";
 import { userApi, metricsApi, planoApi } from "../../services/api";
+import {
+  registerForPushNotifications,
+  scheduleWorkoutReminder,
+  cancelAllScheduled,
+} from "../../services/notifications";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { getIMCCategory } from "../../utils/imc";
@@ -239,12 +244,40 @@ export default function Profile() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [showAllRecords, setShowAllRecords] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [reminderHour, setReminderHour] = useState(18);
+  const [reminderMinute, setReminderMinute] = useState(0);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const heroOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (user?.id) loadData();
   }, [user]);
+
+  useEffect(() => {
+    AsyncStorage.multiGet([
+      "@golift:notifications:enabled",
+      "@golift:notifications:hour",
+      "@golift:notifications:minute",
+    ]).then((entries) => {
+      const map = Object.fromEntries(entries);
+      const enabled = map["@golift:notifications:enabled"] === "true";
+      const hour = map["@golift:notifications:hour"]
+        ? Number(map["@golift:notifications:hour"])
+        : 18;
+      const minute = map["@golift:notifications:minute"]
+        ? Number(map["@golift:notifications:minute"])
+        : 0;
+      setNotificationsEnabled(enabled);
+      setReminderHour(hour);
+      setReminderMinute(minute);
+      if (enabled && user?.id) {
+        registerForPushNotifications(user.id).catch(() => {});
+        scheduleWorkoutReminder(hour, minute).catch(() => {});
+      }
+    }).catch(() => {});
+  }, [user?.id]);
 
   async function loadData() {
     setLoading(true);
@@ -326,6 +359,31 @@ export default function Profile() {
       { text: "Cancelar", style: "cancel" },
       { text: "Sair", style: "destructive", onPress: logout },
     ]);
+  }
+
+  async function handleToggleNotifications(enable: boolean) {
+    setNotificationsEnabled(enable);
+    await AsyncStorage.setItem("@golift:notifications:enabled", String(enable)).catch(() => {});
+    if (enable) {
+      if (user?.id) {
+        registerForPushNotifications(user.id).catch(() => {});
+      }
+      scheduleWorkoutReminder(reminderHour, reminderMinute).catch(() => {});
+    } else {
+      cancelAllScheduled().catch(() => {});
+    }
+  }
+
+  async function handleTimeChange(hour: number, minute: number) {
+    setReminderHour(hour);
+    setReminderMinute(minute);
+    await AsyncStorage.multiSet([
+      ["@golift:notifications:hour", String(hour)],
+      ["@golift:notifications:minute", String(minute)],
+    ]).catch(() => {});
+    if (notificationsEnabled) {
+      scheduleWorkoutReminder(hour, minute).catch(() => {});
+    }
   }
 
   const contextualSubtitle = useMemo(() => {
@@ -677,10 +735,93 @@ export default function Profile() {
           </ScrollView>
         </View>
 
+        {/* Notificacoes */}
+        <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.textSecondary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 14 }}>
+            Notificacoes
+          </Text>
+          <View style={{ backgroundColor: theme.backgroundSecondary, borderRadius: 20, overflow: "hidden" }}>
+            <View style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 18,
+              paddingVertical: 16,
+            }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}>Lembretes de treino</Text>
+                <Text style={{ color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>
+                  Recebe um lembrete diario para treinares
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => handleToggleNotifications(!notificationsEnabled)}
+                accessibilityRole="switch"
+                accessibilityLabel="Ativar lembretes de treino"
+                style={{
+                  width: 48,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: notificationsEnabled ? theme.accentGreen : theme.backgroundTertiary,
+                  justifyContent: "center",
+                  paddingHorizontal: 3,
+                }}
+              >
+                <View style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: "#fff",
+                  alignSelf: notificationsEnabled ? "flex-end" : "flex-start",
+                }} />
+              </Pressable>
+            </View>
+
+            {notificationsEnabled && (
+              <>
+                <Pressable
+                  onPress={() => setShowTimePicker(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Alterar hora do lembrete"
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 18,
+                    paddingVertical: 14,
+                    borderTopWidth: 1,
+                    borderTopColor: theme.backgroundTertiary,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text style={{ color: theme.textSecondary, flex: 1, fontSize: 14 }}>Hora do lembrete</Text>
+                  <Text style={{ color: theme.text, fontWeight: "700", fontSize: 18, letterSpacing: 1 }}>
+                    {String(reminderHour).padStart(2, "0")}:{String(reminderMinute).padStart(2, "0")}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} style={{ marginLeft: 8 }} />
+                </Pressable>
+
+                <View style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 18,
+                  paddingVertical: 12,
+                  borderTopWidth: 1,
+                  borderTopColor: theme.backgroundTertiary,
+                  backgroundColor: (theme as any).backgroundTertiary + "30",
+                }}>
+                  <Ionicons name="notifications" size={14} color={theme.textTertiary} style={{ marginRight: 8 }} />
+                  <Text style={{ color: theme.textTertiary, fontSize: 12, flex: 1 }}>
+                    Pre-visualizacao: "Hora de treinar!" as {String(reminderHour).padStart(2, "0")}:{String(reminderMinute).padStart(2, "0")}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
         <View style={{ paddingHorizontal: 24, marginBottom: 8 }}>
           <Pressable
             onPress={handleLogout}
-            accessibilityLabel="Terminar sessão"
+            accessibilityLabel="Terminar sessao"
             accessibilityRole="button"
             style={({ pressed }) => ({
               backgroundColor: theme.backgroundSecondary,
@@ -811,6 +952,93 @@ export default function Profile() {
             </View>
           </Pressable>
         </Pressable>
+      </Modal>
+
+      {/* Time picker modal */}
+      <Modal visible={showTimePicker} animationType="slide" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 40 }}>
+            <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingBottom: 16 }}>
+              <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text }}>Hora do Lembrete</Text>
+              <Pressable
+                onPress={() => setShowTimePicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+                style={({ pressed }) => ({ backgroundColor: theme.backgroundTertiary, borderRadius: 12, padding: 8, opacity: pressed ? 0.7 : 1 })}
+              >
+                <Ionicons name="close" size={18} color={theme.text} />
+              </Pressable>
+            </View>
+
+            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 20, gap: 20 }}>
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" }}>Hora</Text>
+                <Pressable
+                  onPress={() => handleTimeChange((reminderHour + 1) % 24, reminderMinute)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-up" size={28} color={theme.text} />
+                </Pressable>
+                <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14, marginVertical: 8 }}>
+                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800" }}>
+                    {String(reminderHour).padStart(2, "0")}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => handleTimeChange(reminderHour === 0 ? 23 : reminderHour - 1, reminderMinute)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-down" size={28} color={theme.text} />
+                </Pressable>
+              </View>
+
+              <Text style={{ color: theme.text, fontSize: 42, fontWeight: "300", marginBottom: 30 }}>:</Text>
+
+              <View style={{ alignItems: "center" }}>
+                <Text style={{ color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" }}>Min</Text>
+                <Pressable
+                  onPress={() => handleTimeChange(reminderHour, (reminderMinute + 5) % 60)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-up" size={28} color={theme.text} />
+                </Pressable>
+                <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14, marginVertical: 8 }}>
+                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800" }}>
+                    {String(reminderMinute).padStart(2, "0")}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => handleTimeChange(reminderHour, reminderMinute === 0 ? 55 : reminderMinute - 5)}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.5 : 1 })}
+                >
+                  <Ionicons name="chevron-down" size={28} color={theme.text} />
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              onPress={() => setShowTimePicker(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Confirmar hora"
+              style={({ pressed }) => ({
+                backgroundColor: theme.accent,
+                borderRadius: 16,
+                paddingVertical: 16,
+                marginHorizontal: 24,
+                marginTop: 12,
+                alignItems: "center",
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Confirmar</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </>
   );
