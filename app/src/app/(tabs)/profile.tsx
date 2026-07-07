@@ -260,25 +260,23 @@ export default function Profile() {
       "@golift:notifications:enabled",
       "@golift:notifications:hour",
       "@golift:notifications:minute",
-    ])
-      .then((entries) => {
-        const map = Object.fromEntries(entries);
-        const enabled = map["@golift:notifications:enabled"] === "true";
-        const hour = map["@golift:notifications:hour"]
-          ? Number(map["@golift:notifications:hour"])
-          : 18;
-        const minute = map["@golift:notifications:minute"]
-          ? Number(map["@golift:notifications:minute"])
-          : 0;
-        setNotificationsEnabled(enabled);
-        setReminderHour(hour);
-        setReminderMinute(minute);
-        if (enabled && user?.id) {
-          registerForPushNotifications(user.id).catch(() => {});
-          scheduleWorkoutReminder(hour, minute).catch(() => {});
-        }
-      })
-      .catch(() => {});
+    ]).then((entries) => {
+      const map = Object.fromEntries(entries);
+      const enabled = map["@golift:notifications:enabled"] === "true";
+      const hour = map["@golift:notifications:hour"]
+        ? Number(map["@golift:notifications:hour"])
+        : 18;
+      const minute = map["@golift:notifications:minute"]
+        ? Number(map["@golift:notifications:minute"])
+        : 0;
+      setNotificationsEnabled(enabled);
+      setReminderHour(hour);
+      setReminderMinute(minute);
+      if (enabled && user?.id) {
+        registerForPushNotifications(user.id).catch(() => {});
+        scheduleWorkoutReminder(hour, minute).catch(() => {});
+      }
+    }).catch(() => {});
   }, [user?.id]);
 
   async function loadData() {
@@ -737,13 +735,12 @@ export default function Profile() {
           </ScrollView>
         </View>
 
-        {/* Notificações */}
+        {/* Notificacoes */}
         <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
           <Text style={{ fontSize: 11, fontWeight: "700", color: theme.textSecondary, letterSpacing: 1, textTransform: "uppercase", marginBottom: 14 }}>
-            Notificações
+            Notificacoes
           </Text>
           <View style={{ backgroundColor: theme.backgroundSecondary, borderRadius: 20, overflow: "hidden" }}>
-            {/* Toggle */}
             <View style={{
               flexDirection: "row",
               alignItems: "center",
@@ -753,7 +750,7 @@ export default function Profile() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}>Lembretes de treino</Text>
                 <Text style={{ color: theme.textTertiary, fontSize: 12, marginTop: 2 }}>
-                  Recebe um lembrete diário para treinares
+                  Recebe um lembrete diario para treinares
                 </Text>
               </View>
               <Pressable
@@ -781,7 +778,6 @@ export default function Profile() {
 
             {notificationsEnabled && (
               <>
-                {/* Time picker trigger */}
                 <Pressable
                   onPress={() => setShowTimePicker(true)}
                   accessibilityRole="button"
@@ -803,7 +799,6 @@ export default function Profile() {
                   <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} style={{ marginLeft: 8 }} />
                 </Pressable>
 
-                {/* Preview */}
                 <View style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -811,11 +806,11 @@ export default function Profile() {
                   paddingVertical: 12,
                   borderTopWidth: 1,
                   borderTopColor: theme.backgroundTertiary,
-                  backgroundColor: theme.backgroundTertiary + "30",
+                  backgroundColor: (theme as any).backgroundTertiary + "30",
                 }}>
                   <Ionicons name="notifications" size={14} color={theme.textTertiary} style={{ marginRight: 8 }} />
                   <Text style={{ color: theme.textTertiary, fontSize: 12, flex: 1 }}>
-                    Pré-visualização: "Hora de treinar! 💪" às {String(reminderHour).padStart(2, "0")}:{String(reminderMinute).padStart(2, "0")}
+                    Pre-visualizacao: "Hora de treinar!" as {String(reminderHour).padStart(2, "0")}:{String(reminderMinute).padStart(2, "0")}
                   </Text>
                 </View>
               </>
@@ -826,7 +821,7 @@ export default function Profile() {
         <View style={{ paddingHorizontal: 24, marginBottom: 8 }}>
           <Pressable
             onPress={handleLogout}
-            accessibilityLabel="Terminar sessão"
+            accessibilityLabel="Terminar sessao"
             accessibilityRole="button"
             style={({ pressed }) => ({
               backgroundColor: theme.backgroundSecondary,
@@ -962,10 +957,10 @@ export default function Profile() {
       {/* Time picker modal */}
       <Modal visible={showTimePicker} animationType="slide" transparent>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: safeBottom + 20 }}>
+          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 40 }}>
             <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingBottom: 16 }}>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>Hora do Lembrete</Text>
+              <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text }}>Hora do Lembrete</Text>
               <Pressable
                 onPress={() => setShowTimePicker(false)}
                 accessibilityRole="button"
@@ -977,7 +972,6 @@ export default function Profile() {
             </View>
 
             <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: 20, gap: 20 }}>
-              {/* Hours */}
               <View style={{ alignItems: "center" }}>
                 <Text style={{ color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" }}>Hora</Text>
                 <Pressable
@@ -988,7 +982,7 @@ export default function Profile() {
                   <Ionicons name="chevron-up" size={28} color={theme.text} />
                 </Pressable>
                 <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14, marginVertical: 8 }}>
-                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800", letterSpacing: -1 }}>
+                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800" }}>
                     {String(reminderHour).padStart(2, "0")}
                   </Text>
                 </View>
@@ -1003,7 +997,6 @@ export default function Profile() {
 
               <Text style={{ color: theme.text, fontSize: 42, fontWeight: "300", marginBottom: 30 }}>:</Text>
 
-              {/* Minutes */}
               <View style={{ alignItems: "center" }}>
                 <Text style={{ color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10, textTransform: "uppercase" }}>Min</Text>
                 <Pressable
@@ -1014,7 +1007,7 @@ export default function Profile() {
                   <Ionicons name="chevron-up" size={28} color={theme.text} />
                 </Pressable>
                 <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14, marginVertical: 8 }}>
-                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800", letterSpacing: -1 }}>
+                  <Text style={{ color: theme.text, fontSize: 42, fontWeight: "800" }}>
                     {String(reminderMinute).padStart(2, "0")}
                   </Text>
                 </View>

@@ -28,16 +28,16 @@ function RootLayoutContent() {
   }, [theme.background]);
 
   useEffect(() => {
-    // Configure foreground notification behaviour
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
       }),
     });
 
-    // Handle notification tap — navigates to tabs
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       if (data?.screen) {
