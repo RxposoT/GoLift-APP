@@ -48,9 +48,15 @@ export default function WorkoutActive() {
   const [restTimer, setRestTimer] = useState<number | null>(null);
   const [restDefault, setRestDefault] = useState(90);
 
+  const timerPausedRef = useRef(false);
   const startTimeRef = useRef(Date.now());
   const pausedDurationRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
+
+  // Sync timerPaused state → ref so the interval closure always reads current value
+  useEffect(() => {
+    timerPausedRef.current = timerPaused;
+  }, [timerPaused]);
 
   // Partilha de resultados — gerida no ecrã summary
 
@@ -64,13 +70,7 @@ export default function WorkoutActive() {
       .catch(() => {});
     startTimeRef.current = Date.now();
     startTick();
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && timerPaused) {
-        // App voltou ao ativo enquanto pausado — regista retorno
-      } else if (state === 'background' || state === 'inactive') {
-        // App foi para background
-      }
-    });
+    const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
@@ -79,16 +79,61 @@ export default function WorkoutActive() {
   }, []);
 
   function getElapsed(): number {
-    return Math.floor((Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000);
+    const now = Date.now();
+    if (pausedAtRef.current !== null) {
+      // Congelar no momento em que pausou
+      return Math.floor((pausedAtRef.current - startTimeRef.current - pausedDurationRef.current) / 1000);
+    }
+    return Math.floor((now - startTimeRef.current - pausedDurationRef.current) / 1000);
   }
 
   function startTick() {
     if (tickRef.current) clearInterval(tickRef.current);
     tickRef.current = setInterval(() => {
-      if (!timerPaused) {
+      if (!timerPausedRef.current) {
         setTempoDecorrido(getElapsed());
       }
     }, 1000) as unknown as number;
+  }
+
+  function handlePause() {
+    pausedAtRef.current = Date.now();
+    setTimerPaused(true);
+  }
+
+  function handleResume() {
+    if (pausedAtRef.current !== null) {
+      pausedDurationRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
+    setTimerPaused(false);
+    // Atualizar imediatamente ao retomar
+    setTempoDecorrido(getElapsed());
+  }
+
+  function togglePause() {
+    if (timerPausedRef.current) {
+      handleResume();
+    } else {
+      handlePause();
+    }
+  }
+
+  function handleAppStateChange(state: string) {
+    if (state === 'active') {
+      // App voltou ao primeiro plano
+      if (pausedAtRef.current !== null) {
+        pausedDurationRef.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = null;
+      }
+      // Atualizar tempo imediatamente ao voltar
+      setTempoDecorrido(getElapsed());
+    } else if (state === 'background' || state === 'inactive') {
+      // App foi para background — pausar se não estava já pausado
+      if (!timerPausedRef.current && pausedAtRef.current === null) {
+        pausedAtRef.current = Date.now();
+      }
+    }
   }
 
   async function loadWorkout() {
@@ -298,7 +343,7 @@ export default function WorkoutActive() {
           style: "destructive",
           onPress: () => {
             // Bug 6: parar o timer ao cancelar
-            if (timerRef.current) clearInterval(timerRef.current);
+            if (tickRef.current) clearInterval(tickRef.current);
             router.back();
           },
         },
@@ -337,7 +382,7 @@ export default function WorkoutActive() {
             const sessionResult = await workoutApi.saveSession(user!.id, Number(id), tempoDecorrido, todasAsSeries);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            if (timerRef.current) clearInterval(timerRef.current);
+            if (tickRef.current) clearInterval(tickRef.current);
             if (restTimerRef.current) clearInterval(restTimerRef.current);
 
             // Calcular volume total e navegar para feedback
@@ -391,6 +436,56 @@ export default function WorkoutActive() {
   return (
 
     <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {/* ── Header: Timer + Pause ── */}
+      <View style={{
+        paddingTop: safeTop + 12,
+        paddingHorizontal: 20,
+        paddingBottom: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        backgroundColor: theme.backgroundSecondary,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.backgroundTertiary,
+      }}>
+        <Pressable
+          onPress={cancelarTreino}
+          accessibilityLabel="Cancelar treino"
+          accessibilityRole="button"
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ionicons name="close" size={24} color={theme.text} />
+        </Pressable>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Ionicons name="time-outline" size={20} color={theme.accent} />
+          <Text style={{ color: theme.text, fontSize: 22, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
+            {formatarTempo(tempoDecorrido)}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={togglePause}
+          accessibilityLabel={timerPaused ? "Retomar treino" : "Pausar treino"}
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.6 : 1,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: timerPaused ? theme.accent : theme.backgroundTertiary,
+            alignItems: "center",
+            justifyContent: "center",
+          })}
+        >
+          <Ionicons
+            name={timerPaused ? "play" : "pause"}
+            size={22}
+            color={timerPaused ? "#fff" : theme.text}
+          />
+        </Pressable>
+      </View>
+
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* ...existing code for exercises... */}
         {exercicios.map((exercicio: ExercicioAtivo, index: number) => {
