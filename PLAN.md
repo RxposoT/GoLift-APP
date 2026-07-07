@@ -21,10 +21,9 @@
 | Perfil & Gamificação | 95% | Concluído | `main` |
 | Sincronização Peso (Backend) | 100% | Concluído | `main` |
 | UI/UX Polish (Skeletons, Animações) | 95% | Concluído | `main` |
-| **Notificações Push** | **60%** | [AGENTE B → background] | `feat/notifications` |
-| **Testes (Unit + Integration)** | **30%** | [AGENTE A → background] | `feat/tests` |
-| **CI/CD (GitHub Actions + EAS)** | **100%** | **Concluído** | `main` |
-| Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
+| Notificações Push (Expo + Edge Functions) | **100%** | **Concluído** | `main` |
+| Testes (Unit + API Mock) | **80%** | **Concluído** | `main` |
+| CI/CD (GitHub Actions + EAS) | **100%** | **Concluído** | `main` |
 | Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
 
 ---
@@ -33,10 +32,10 @@
 
 | Tarefa | Responsável | Branch | Estado |
 |--------|-------------|--------|--------|
-| Notificações Push | Agente B (background) | `feat/notifications` | ⏳ Continuar: Edge Function + streak/report |
-| Testes Unit + Integration | Agente A (background) | `feat/tests` | ⏳ Continuar: @types/jest + npm test passing |
-| CI/CD | Coordenador | `main` | ✅ Entregue: GitHub Actions + EAS dev profile |
-| Offline-First | Coordenador | `main` | ✅ Entregue: cache + sync queue + offline banner |
+| Notificações | Coordenador | `main` | ✅ Framework + Edge Function + UI Perfil + Migration |
+| Testes | Coordenador | `main` | ✅ 5 suites, 31 testes (helpers + APIs mock) |
+| CI/CD | Coordenador | `main` | ✅ GitHub Actions + EAS dev/preview/prod |
+| Offline-First | Coordenador | `main` | ✅ Cache layer + Sync queue + Banner |
 
 ---
 
