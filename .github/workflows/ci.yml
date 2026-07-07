@@ -30,16 +30,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Run lint
+        run: npm run lint
+
       - name: TypeScript check
         run: npx tsc --noEmit
 
       - name: Run tests
         run: npm test
 
-  # Optional: lint if you add ESLint later
-  # lint:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - run: npm ci
-  #     - run: npm run lint
