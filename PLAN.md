@@ -12,6 +12,7 @@
 |------|---|-------------|--------|
 | Auth & Onboarding | 100% | Concluído | `main` |
 | Timer Treino Ativo | 100% | Concluído | `main` |
+| **Exercícios Treino Ativo** | **100%** | **Concluído** | `main` |
 | Biblioteca Treinos CRUD | 95% | Concluído | `main` |
 | Métricas & Progresso | 92% | Concluído | `main` |
 | Plano IA (Wizard) | 95% | Concluído | `main` |
@@ -21,7 +22,7 @@
 | Sincronização Peso (Backend) | 100% | Concluído | `main` |
 | UI/UX Polish (Skeletons, Animações) | 95% | Concluído | `main` |
 | **Notificações Push** | **60%** | **[AGENTE B → feat/notifications]** | `feat/notifications` |
-| **Testes (Unit + Integration)** | **0%** | **[LIVRE → feat/tests]** | `feat/tests` |
+| **Testes (Unit + Integration)** | **30%** | **[AGENTE A → feat/tests]** | `feat/tests` |
 | CI/CD (GitHub Actions + EAS) | 0% | Pendente | `feat/ci-cd` |
 | Offline-First (Cache Local) | 0% | Pendente | `feat/offline` |
 
@@ -31,8 +32,8 @@
 
 | Tarefa | Responsável | Branch | Estado |
 |--------|-------------|--------|--------|
-| Notificações Push | Agente B | `feat/notifications` | ⏳ Em progresso (5 commits: framework + push API + layout + profile UI + time picker) |
-| Testes Unit + Integration | LIVRE | `feat/tests` | ⏳ Por iniciar |
+| Notificações Push | Agente B | `feat/notifications` | ⏳ Em progresso (6 commits: framework + push API + layout + profile UI + time picker + merge) |
+| Testes Unit + Integration | Agente A | `feat/tests` | ⏳ Em progresso (1 commit: jest config + 7 test files) |
 
 ---
 
@@ -40,7 +41,8 @@
 
 | Bug | Ficheiro | Atribuído | Estado |
 |-----|----------|-----------|--------|
-| Nenhum crítico em aberto | — | — | ✅ Todos resolvidos |
+| ~~Exercícios não renderizavam (placeholder comments)~~ | `workout/[id].tsx` | ✅ **Corrigido** | ✅ Resolvido |
+| ~~Timer pause em closure stale~~ | `workout/[id].tsx` | ✅ **Corrigido** | ✅ Resolvido |
 
 ---
 
