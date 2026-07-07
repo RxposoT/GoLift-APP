@@ -3,6 +3,17 @@
     "version": ">= 16.0.0"
   },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_IP": "goliftapp.me",
+        "EXPO_PUBLIC_IS_PRODUCTION": "false"
+      }
+    },
     "preview": {
       "android": {
         "buildType": "apk"
