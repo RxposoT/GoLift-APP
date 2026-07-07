@@ -1,16 +1,16 @@
 import { useState } from "react";
 import {
   View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   ScrollView,
 } from "react-native";
 import { Link } from "expo-router";
+import { Text, Button, Input } from "../components/ui";
+import { spacing, radius } from "../styles/tokens";
+import { IMC_COLORS, AMBER } from "../styles/colors";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
@@ -32,7 +32,6 @@ export default function Register() {
   const { safeTop } = useAndroidInsets();
   const [step, setStep] = useState<Step>("conta");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -116,59 +115,57 @@ export default function Register() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1, backgroundColor: theme.background }}
     >
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: safeTop + 12 }}>
+      <View style={{ flex: 1, paddingHorizontal: spacing.xxl, paddingTop: safeTop + 12 }}>
         {/* Header */}
-        <View style={{ alignItems: "center", marginBottom: 16 }}>
+        <View style={{ alignItems: "center", marginBottom: spacing.lg }}>
           <View style={{
-            width: 56, height: 56, backgroundColor: theme.accent + "18", borderRadius: 16,
+            width: 56, height: 56, backgroundColor: theme.accent + "18", borderRadius: radius.lg,
             alignItems: "center", justifyContent: "center", marginBottom: 14,
           }}>
             <Ionicons name="barbell" size={30} color={theme.accent} />
           </View>
-          {step === "conta" && <Text style={{ fontSize: 26, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>Cria a tua conta</Text>}
-          {step === "perfil" && <Text style={{ fontSize: 26, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>O teu perfil</Text>}
-          {step === "objetivo" && <Text style={{ fontSize: 26, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>O teu objetivo</Text>}
-          <Text style={{ color: theme.textSecondary, marginTop: 6, fontSize: 13 }}>Passo {stepIndex + 1} de 3</Text>
+          {step === "conta" && <Text variant="title1">Cria a tua conta</Text>}
+          {step === "perfil" && <Text variant="title1">O teu perfil</Text>}
+          {step === "objetivo" && <Text variant="title1">O teu objetivo</Text>}
+          <Text variant="subhead" color="textSecondary" style={{ marginTop: 6 }}>Passo {stepIndex + 1} de 3</Text>
         </View>
 
         {/* Progress Bar */}
-        <View style={{ height: 3, backgroundColor: theme.backgroundSecondary, borderRadius: 2, marginBottom: 24, overflow: "hidden" }}>
+        <View style={{ height: 3, backgroundColor: theme.backgroundSecondary, borderRadius: 2, marginBottom: spacing.xxl, overflow: "hidden" }}>
           <View style={{ height: "100%", backgroundColor: theme.accent, width: `${progressPercent}%`, borderRadius: 2 }} />
         </View>
 
         {/* Content */}
-        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, gap: 16 }}>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, gap: spacing.lg }}>
           {/* STEP 1: CONTA */}
           {step === "conta" && (
-            <View style={{ flex: 1, justifyContent: "center", gap: 14 }}>
-              <InputField
-                icon="person-outline" placeholder="O teu nome" value={nome} onChangeText={setNome}
-                theme={theme} autoFocus
+            <View style={{ flex: 1, justifyContent: "center", gap: spacing.md }}>
+              <Input
+                leftIcon="person-outline" placeholder="O teu nome" value={nome} onChangeText={setNome}
+                autoFocus
               />
-              <InputField
-                icon="mail-outline" placeholder="exemplo@email.com" value={email} onChangeText={setEmail}
-                theme={theme} keyboardType="email-address" autoCapitalize="none"
+              <Input
+                leftIcon="mail-outline" placeholder="exemplo@email.com" value={email} onChangeText={setEmail}
+                keyboardType="email-address" autoCapitalize="none"
               />
               <View>
-                <InputField
-                  icon="lock-closed-outline" placeholder="Mínimo 8 caracteres" value={password} onChangeText={setPassword}
-                  theme={theme} secureTextEntry={!showPassword}
-                  rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
-                  onRightPress={() => setShowPassword(!showPassword)}
+                <Input
+                  leftIcon="lock-closed-outline" placeholder="Mínimo 8 caracteres" value={password} onChangeText={setPassword}
+                  isPassword
                 />
                 {password.length > 0 && (
-                  <View style={{ marginTop: 12 }}>
-                    <View style={{ flexDirection: "row", gap: 6, marginBottom: 8 }}>
+                  <View style={{ marginTop: spacing.md }}>
+                    <View style={{ flexDirection: "row", gap: 6, marginBottom: spacing.sm }}>
                       {[1, 2, 3, 4].map((l) => (
                         <View key={l} style={{
                           flex: 1, height: 4, borderRadius: 2,
                           backgroundColor: pwStrength >= l
-                            ? pwStrength <= 1 ? "#ef4444" : pwStrength === 2 ? "#f59e0b" : "#10b981"
+                            ? pwStrength <= 1 ? IMC_COLORS.obese2 : pwStrength === 2 ? AMBER : IMC_COLORS.normal
                             : theme.backgroundTertiary,
                         }} />
                       ))}
                     </View>
-                    <Text style={{ color: pwStrength <= 1 ? "#ef4444" : pwStrength === 2 ? "#f59e0b" : "#10b981", fontSize: 13, fontWeight: "600" }}>
+                    <Text variant="subhead" style={{ color: pwStrength <= 1 ? IMC_COLORS.obese2 : pwStrength === 2 ? AMBER : IMC_COLORS.normal, fontWeight: "600" }}>
                       {pwStrength <= 1 ? "Fraca" : pwStrength === 2 ? "Média" : "Forte"}
                     </Text>
                   </View>
@@ -179,32 +176,28 @@ export default function Register() {
 
           {/* STEP 2: PERFIL */}
           {step === "perfil" && (
-            <View style={{ flex: 1, justifyContent: "center", gap: 14 }}>
-              <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 1, justifyContent: "center", gap: spacing.md }}>
+              <View style={{ flexDirection: "row", gap: spacing.md }}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.backgroundSecondary, borderRadius: 16, borderColor: theme.border, borderWidth: 1, paddingHorizontal: 18 }}>
-                    <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
-                    <TextInput
-                      style={{ flex: 1, color: theme.text, paddingVertical: 15, paddingHorizontal: 12, fontSize: 16 }}
-                      placeholder="Idade" placeholderTextColor={theme.textSecondary}
-                      value={idade} onChangeText={setIdade} keyboardType="number-pad" autoFocus
-                    />
-                  </View>
+                  <Input
+                    leftIcon="calendar-outline" placeholder="Idade" value={idade} onChangeText={setIdade}
+                    keyboardType="number-pad" autoFocus
+                  />
                 </View>
                 <UnitToggle value={weightUnit} onChange={setWeightUnit} theme={theme} />
               </View>
 
-              <View style={{ flexDirection: "row", gap: 12 }}>
+              <View style={{ flexDirection: "row", gap: spacing.md }}>
                 <View style={{ flex: 1 }}>
-                  <InputField
-                    icon="scale-outline" placeholder={weightUnit === "kg" ? "Peso (kg)" : "Peso (lbs)"}
-                    value={peso} onChangeText={setPeso} theme={theme} keyboardType="decimal-pad"
+                  <Input
+                    leftIcon="scale-outline" placeholder={weightUnit === "kg" ? "Peso (kg)" : "Peso (lbs)"}
+                    value={peso} onChangeText={setPeso} keyboardType="decimal-pad"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <InputField
-                    icon="resize-outline" placeholder="Altura (cm)"
-                    value={altura} onChangeText={setAltura} theme={theme} keyboardType="number-pad"
+                  <Input
+                    leftIcon="resize-outline" placeholder="Altura (cm)"
+                    value={altura} onChangeText={setAltura} keyboardType="number-pad"
                   />
                 </View>
               </View>
@@ -215,38 +208,38 @@ export default function Register() {
           {step === "objetivo" && (
             <View style={{ flex: 1, justifyContent: "center", gap: 10 }}>
               {objectives.map((obj) => (
-                <TouchableOpacity
+                <Pressable
                   key={obj.id}
                   onPress={() => setObjetivo(obj.id)}
                   style={{
                     backgroundColor: objetivo === obj.id ? theme.primary : theme.backgroundSecondary,
                     borderColor: objetivo === obj.id ? theme.primary : theme.border,
-                    borderWidth: 1.5, borderRadius: 16, padding: 14,
+                    borderWidth: 1.5, borderRadius: radius.lg, padding: spacing.md,
                     flexDirection: "row", alignItems: "center",
                   }}
                 >
                   <View style={{
                     width: 44, height: 44, borderRadius: 12,
                     backgroundColor: objetivo === obj.id ? "#ffffff33" : theme.backgroundTertiary,
-                    alignItems: "center", justifyContent: "center", marginRight: 12,
+                    alignItems: "center", justifyContent: "center", marginRight: spacing.md,
                   }}>
                     <Ionicons name={obj.icon} size={22} color={objetivo === obj.id ? "#fff" : theme.text} />
                   </View>
-                  <Text style={{ color: objetivo === obj.id ? "#fff" : theme.text, fontSize: 16, fontWeight: "600", flex: 1 }}>
+                  <Text variant="headline" style={{ color: objetivo === obj.id ? "#fff" : theme.text, flex: 1 }}>
                     {obj.label}
                   </Text>
                   {objetivo === obj.id && <Ionicons name="checkmark-circle" size={22} color="#fff" />}
-                </TouchableOpacity>
+                </Pressable>
               ))}
 
               {needsTargetWeight && (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: "500", textAlign: "center", marginBottom: 8 }}>
+                <View style={{ marginTop: spacing.sm }}>
+                  <Text variant="callout" color="textSecondary" style={{ textAlign: "center", fontWeight: "500", marginBottom: spacing.sm }}>
                     {objetivo === "musculo" ? "Peso que queres ganhar (kg)" : "Peso que queres atingir (kg)"}
                   </Text>
-                  <InputField
-                    icon="trending-up-outline" placeholder="Peso alvo"
-                    value={pesoAlvo} onChangeText={setPesoAlvo} theme={theme} keyboardType="decimal-pad"
+                  <Input
+                    leftIcon="trending-up-outline" placeholder="Peso alvo"
+                    value={pesoAlvo} onChangeText={setPesoAlvo} keyboardType="decimal-pad"
                   />
                 </View>
               )}
@@ -255,41 +248,27 @@ export default function Register() {
         </ScrollView>
 
         {/* Buttons */}
-        <View style={{ paddingVertical: 16, gap: 10 }}>
-          <View style={{ flexDirection: "row", gap: 10 }}>
+        <View style={{ paddingVertical: spacing.lg, gap: spacing.sm }}>
+          <View style={{ flexDirection: "row", gap: spacing.sm }}>
             {stepIndex > 0 && (
-              <TouchableOpacity
-                onPress={() => setStep(step === "perfil" ? "conta" : "perfil")}
-                style={{ flex: 1, backgroundColor: theme.backgroundSecondary, paddingVertical: 11, borderRadius: 14, alignItems: "center", borderColor: theme.border, borderWidth: 1 }}
-              >
-                <Text style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}>Voltar</Text>
-              </TouchableOpacity>
+              <Button variant="secondary" onPress={() => setStep(step === "perfil" ? "conta" : "perfil")} style={{ flex: 1 }}>
+                Voltar
+              </Button>
             )}
-            <TouchableOpacity
+            <Button
+              variant="primary"
+              loading={loading}
               onPress={step === "objetivo" ? handleRegister : handleNext}
-              disabled={loading}
-              style={{
-                flex: stepIndex > 0 ? 1 : undefined, width: stepIndex === 0 ? "100%" : undefined,
-                backgroundColor: theme.primary, paddingVertical: 11, borderRadius: 14,
-                alignItems: "center", opacity: loading ? 0.7 : 1,
-              }}
+              style={{ flex: stepIndex > 0 ? 1 : undefined, width: stepIndex === 0 ? "100%" : undefined }}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-                  {step === "objetivo" ? "Criar Conta" : "Continuar"}
-                </Text>
-              )}
-            </TouchableOpacity>
+              {step === "objetivo" ? "Criar Conta" : "Continuar"}
+            </Button>
           </View>
 
           <View style={{ flexDirection: "row", justifyContent: "center" }}>
-            <Text style={{ color: theme.textSecondary, fontSize: 13 }}>Já tens conta? </Text>
-            <Link href="/login" asChild>
-              <TouchableOpacity>
-                <Text style={{ color: theme.primary, fontWeight: "700", fontSize: 13 }}>Fazer Login</Text>
-              </TouchableOpacity>
+            <Text variant="footnote" color="textSecondary">Já tens conta? </Text>
+            <Link href="/login">
+              <Text variant="footnote" color="accent" style={{ fontWeight: "700" }}>Fazer Login</Text>
             </Link>
           </View>
         </View>
@@ -300,44 +279,11 @@ export default function Register() {
 
 /* ── Helpers ── */
 
-function InputField({
-  icon, placeholder, value, onChangeText, theme, secureTextEntry,
-  keyboardType, autoCapitalize, autoFocus, rightIcon, onRightPress,
-}: {
-  icon: string; placeholder: string; value: string; onChangeText: (t: string) => void;
-  theme: any; secureTextEntry?: boolean; keyboardType?: any; autoCapitalize?: any;
-  autoFocus?: boolean; rightIcon?: string; onRightPress?: () => void;
-}) {
-  return (
-    <View style={{
-      flexDirection: "row", alignItems: "center",
-      backgroundColor: theme.backgroundSecondary, borderRadius: 16,
-      borderColor: theme.border, borderWidth: 1, paddingHorizontal: 18,
-    }}>
-      <Ionicons name={icon as any} size={20} color={theme.textSecondary} />
-      <TextInput
-        style={{ flex: 1, color: theme.text, paddingVertical: 15, paddingHorizontal: 12, fontSize: 16 }}
-        placeholder={placeholder} placeholderTextColor={theme.textSecondary}
-        value={value} onChangeText={onChangeText}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        autoFocus={autoFocus}
-      />
-      {rightIcon && (
-        <TouchableOpacity onPress={onRightPress}>
-          <Ionicons name={rightIcon as any} size={24} color={theme.textSecondary} />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
-
 function UnitToggle({ value, onChange, theme }: { value: WeightUnit; onChange: (v: WeightUnit) => void; theme: any }) {
   return (
     <View style={{ flexDirection: "row", backgroundColor: theme.backgroundSecondary, borderRadius: 12, borderColor: theme.border, borderWidth: 1 }}>
       {(["kg", "lbs"] as WeightUnit[]).map((u) => (
-        <TouchableOpacity
+        <Pressable
           key={u}
           onPress={() => onChange(u)}
           style={{
@@ -350,7 +296,7 @@ function UnitToggle({ value, onChange, theme }: { value: WeightUnit; onChange: (
             color: value === u ? theme.background : theme.textSecondary,
             fontWeight: "700", fontSize: 13,
           }}>{u.toUpperCase()}</Text>
-        </TouchableOpacity>
+        </Pressable>
       ))}
     </View>
   );

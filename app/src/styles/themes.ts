@@ -16,6 +16,7 @@ export const lightTheme = {
   accentBlue: '#005CE6',
 
   streakBase: '#F2F2F7',
+  danger: '#FF3B30',
 };
 
 export const darkTheme = {
@@ -36,6 +37,7 @@ export const darkTheme = {
   accentBlue: '#0A84FF',
 
   streakBase: '#1C1C1E',
+  danger: '#FF3B30',
 };
 
 export const typography = {

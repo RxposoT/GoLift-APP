@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
   Alert,
   Modal,
 } from "react-native";
+import { Text, Card, Button, EmptyState } from "../../components/ui";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -18,9 +18,8 @@ import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import StreakBar from "../../components/StreakBar";
 import { supabase } from "../../lib/supabase";
 import { useGorila } from "../../components/gorila/GorilaContext";
-import { typography } from "../../styles/themes";
-
-const T = typography;
+import { spacing, radius } from "../../styles/tokens";
+import { STREAK_ORANGE, MODAL_BACKDROP } from "../../styles/colors";
 
 export default function Home() {
   const { user } = useAuth();
@@ -156,21 +155,21 @@ export default function Home() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* ── HEADER ── */}
-        <View style={{ paddingHorizontal: 24, paddingTop: safeTop + 16, paddingBottom: 8 }}>
-          <Text style={[T.callout, { color: theme.textSecondary, marginBottom: 4 }]}>
+        <View style={{ paddingHorizontal: spacing.xxl, paddingTop: safeTop + spacing.lg, paddingBottom: spacing.sm }}>
+          <Text variant="callout" color="textSecondary" style={{ marginBottom: spacing.xs }}>
             {getGreeting()},
           </Text>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <Text style={[T.title1, { color: theme.text, flex: 1 }]}>
+            <Text variant="title1" style={{ flex: 1 }}>
               {user?.nome ? user.nome.charAt(0).toUpperCase() + user.nome.slice(1) : "Atleta"}
             </Text>
             <TouchableOpacity
               onPress={() => setShowStreakModal(true)}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.backgroundSecondary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: theme.backgroundSecondary, paddingHorizontal: 14, paddingVertical: spacing.sm, borderRadius: 20 }}
               activeOpacity={0.7}
             >
-              <Ionicons name="flame" size={18} color={streak > 0 ? "#FF9F0A" : theme.textTertiary} />
-              <Text style={[{ color: streak > 0 ? "#FF9F0A" : theme.textTertiary }, T.body, { fontWeight: "700" }]}>
+              <Ionicons name="flame" size={18} color={streak > 0 ? STREAK_ORANGE : theme.textTertiary} />
+              <Text variant="body" style={{ color: streak > 0 ? STREAK_ORANGE : theme.textTertiary, fontWeight: "700" }}>
                 {streak}
               </Text>
             </TouchableOpacity>
@@ -181,25 +180,25 @@ export default function Home() {
         {precisaCheckin ? (
           <TouchableOpacity
             onPress={() => router.push("/checkin")}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: theme.accent + "15", borderRadius: 18, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 }}
+            style={{ marginHorizontal: 20, marginBottom: spacing.lg, backgroundColor: theme.accent + "15", borderRadius: 18, padding: spacing.lg, flexDirection: "row", alignItems: "center", gap: spacing.md }}
             activeOpacity={0.7}
           >
             <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: theme.accent + "25", justifyContent: "center", alignItems: "center" }}>
               <Ionicons name="moon" size={20} color={theme.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[T.headline, { color: theme.text }]}>Check-in Diário</Text>
-              <Text style={[T.subhead, { color: theme.textSecondary }]}>Como dormiste? Conta-me como te sentes hoje</Text>
+              <Text variant="headline">Check-in Diário</Text>
+              <Text variant="subhead" color="textSecondary">Como dormiste? Conta-me como te sentes hoje</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={theme.accent} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={() => {}}
-            style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: theme.accentGreen + "12", borderRadius: 18, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
+            style={{ marginHorizontal: 20, marginBottom: spacing.lg, backgroundColor: theme.accentGreen + "12", borderRadius: 18, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
           >
             <Ionicons name="checkmark-circle" size={20} color={theme.accentGreen} />
-            <Text style={[{ color: theme.accentGreen }, T.subhead]}>Check-in de hoje feito</Text>
+            <Text variant="subhead" style={{ color: theme.accentGreen }}>Check-in de hoje feito</Text>
           </TouchableOpacity>
         )}
 
@@ -207,17 +206,17 @@ export default function Home() {
         <StreakBar streak={streak} xp={xp} nivel={nivel} xpProximoNivel={nivel * 100} />
 
         {/* ── ATIVIDADE DA SEMANA ── */}
-        <View style={{ paddingHorizontal: 24, marginTop: 20, marginBottom: 28 }}>
+        <View style={{ paddingHorizontal: spacing.xxl, marginTop: spacing.xl, marginBottom: spacing.huge }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <Text style={[T.caption, { color: theme.text }]}>SEMANA</Text>
-            <Text style={[T.subhead, { color: theme.textSecondary }]}>{streakHistory.filter(d => d.completed).length} de 7 dias</Text>
+            <Text variant="caption">SEMANA</Text>
+            <Text variant="subhead" color="textSecondary">{streakHistory.filter(d => d.completed).length} de 7 dias</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 6 }}>
             {streakHistory.map((dayData, i) => {
               const isToday = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })() === dayData.date;
               return (
                 <View key={i} style={{ flex: 1, alignItems: "center", gap: 6 }}>
-                  <Text style={[T.footnote, { fontWeight: "600", color: isToday ? theme.accent : theme.textTertiary }]}>{dayData.day.toUpperCase()}</Text>
+                  <Text variant="footnote" style={{ fontWeight: "600", color: isToday ? theme.accent : theme.textTertiary }}>{dayData.day.toUpperCase()}</Text>
                   <View style={{ width: "100%", aspectRatio: 1, borderRadius: 10, backgroundColor: dayData.completed ? theme.accentGreen : isToday ? theme.accent + "30" : theme.backgroundSecondary, alignItems: "center", justifyContent: "center", borderWidth: isToday && !dayData.completed ? 1.5 : 0, borderColor: theme.accent }}>
                     {dayData.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
                   </View>
@@ -232,53 +231,50 @@ export default function Home() {
 
         {/* ── FRASE DO DIA ── */}
         {dailyPhrase ? (
-          <View style={{ paddingHorizontal: 24, marginBottom: 28 }}>
-            <View style={{ backgroundColor: theme.accent + "12", borderRadius: 18, padding: 18, borderLeftWidth: 3, borderLeftColor: theme.accent, flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+          <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.huge }}>
+            <View style={{ backgroundColor: theme.accent + "12", borderRadius: 18, padding: 18, borderLeftWidth: 3, borderLeftColor: theme.accent, flexDirection: "row", alignItems: "flex-start", gap: spacing.md }}>
               <Ionicons name="sparkles" size={16} color={theme.accent} style={{ marginTop: 2 }} />
-              <Text style={[T.callout, { color: theme.text, flex: 1, fontStyle: "italic" }]}>{dailyPhrase}</Text>
+              <Text variant="callout" style={{ flex: 1, fontStyle: "italic" }}>{dailyPhrase}</Text>
             </View>
           </View>
         ) : null}
 
         {/* ── STATS ── */}
-        <View style={{ paddingHorizontal: 24, gap: 12, marginBottom: 36 }}>
-          <View style={{ backgroundColor: theme.accent, borderRadius: 24, padding: 24 }}>
-            <Text style={[T.caption, { color: "rgba(255,255,255,0.55)", marginBottom: 8 }]}>Total de Treinos</Text>
-            <Text style={[T.display, { color: "#fff" }]}>{stats.totalWorkouts}</Text>
-            <Text style={[T.subhead, { color: "rgba(255,255,255,0.45)", marginTop: 8 }]}>sessões completadas</Text>
+        <View style={{ paddingHorizontal: spacing.xxl, gap: spacing.md, marginBottom: 36 }}>
+          <View style={{ backgroundColor: theme.accent, borderRadius: 24, padding: spacing.xxl }}>
+            <Text variant="caption" style={{ color: "rgba(255,255,255,0.55)", marginBottom: spacing.sm }}>Total de Treinos</Text>
+            <Text variant="display" style={{ color: "#fff" }}>{stats.totalWorkouts}</Text>
+            <Text variant="subhead" style={{ color: "rgba(255,255,255,0.45)", marginTop: spacing.sm }}>sessões completadas</Text>
           </View>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 24, padding: 20 }}>
-              <Text style={[T.caption, { color: theme.textSecondary, marginBottom: 8 }]}>Esta Semana</Text>
-              <Text style={[T.title1, { color: theme.text }]}>{stats.thisWeek}</Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 24, padding: 20 }}>
-              <Text style={[T.caption, { color: theme.textSecondary, marginBottom: 8 }]}>Tempo Total</Text>
-              <Text style={[T.title1, { color: theme.text }]}>{formatTime(stats.totalTime)}</Text>
-            </View>
+          <View style={{ flexDirection: "row", gap: spacing.md }}>
+            <Card elevated={false} padding={spacing.xl} style={{ flex: 1 }}>
+              <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm }}>Esta Semana</Text>
+              <Text variant="title1">{stats.thisWeek}</Text>
+            </Card>
+            <Card elevated={false} padding={spacing.xl} style={{ flex: 1 }}>
+              <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm }}>Tempo Total</Text>
+              <Text variant="title1">{formatTime(stats.totalTime)}</Text>
+            </Card>
           </View>
         </View>
 
         {/* ── TREINOS RECENTES ── */}
-        <View style={{ paddingHorizontal: 24 }}>
+        <View style={{ paddingHorizontal: spacing.xxl }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-            <Text style={[T.title3, { color: theme.text }]}>Sessões Recentes</Text>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/workouts")} activeOpacity={0.6}>
-              <Text style={[T.headline, { color: theme.accent }]}>Ver todos</Text>
-            </TouchableOpacity>
+            <Text variant="title3">Sessões Recentes</Text>
+            <Button variant="ghost" size="sm" onPress={() => router.push("/(tabs)/workouts")}>Ver todos</Button>
           </View>
 
           {recentWorkouts.length === 0 ? (
-            <View style={{ backgroundColor: theme.backgroundSecondary, borderRadius: 24, padding: 36, alignItems: "center" }}>
-              <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: theme.backgroundTertiary, alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                <Ionicons name="barbell-outline" size={32} color={theme.textTertiary} />
-              </View>
-              <Text style={[T.headline, { color: theme.text, marginBottom: 6 }]}>Sem sessões ainda</Text>
-              <Text style={[T.callout, { color: theme.textSecondary, textAlign: "center" }]}>Faz o teu primeiro treino e vê o teu progresso aqui</Text>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/workouts")} style={{ backgroundColor: theme.accent, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14, marginTop: 24 }}>
-                <Text style={[{ color: "white" }, T.headline]}>Criar Treino</Text>
-              </TouchableOpacity>
-            </View>
+            <Card padding={36}>
+              <EmptyState
+                icon="barbell-outline"
+                title="Sem sessões ainda"
+                subtitle="Faz o teu primeiro treino e começa a acompanhar o teu progresso!"
+                actionLabel="Criar Treino"
+                onAction={() => router.push("/(tabs)/workouts")}
+              />
+            </Card>
           ) : (
             <View style={{ gap: 10 }}>
               {recentWorkouts.map((workout, index) => (
@@ -291,15 +287,15 @@ export default function Home() {
                   <View style={{ width: 4, backgroundColor: theme.accent }} />
                   <View style={{ flex: 1, padding: 18, flexDirection: "row", alignItems: "center" }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={[T.headline, { color: theme.text, marginBottom: 4 }]}>
+                      <Text variant="headline" style={{ marginBottom: spacing.xs }}>
                         {workout.nome || workout.nome_treino || workout.name || "Treino"}
                       </Text>
-                      <Text style={[T.subhead, { color: theme.textSecondary }]}>
+                      <Text variant="subhead" color="textSecondary">
                         {(workout.data_inicio || workout.data) ? formatSessionAge(workout.data_inicio || workout.data) : `${workout.num_exercicios ?? 0} exercícios`}
                         {(workout.duracao_segundos || 0) > 0 ? ` · ${formatTime(workout.duracao_segundos)}` : ""}
                       </Text>
                     </View>
-                    <View style={{ backgroundColor: theme.accent, borderRadius: 12, padding: 8 }}>
+                    <View style={{ backgroundColor: theme.accent, borderRadius: 12, padding: spacing.sm }}>
                       <Ionicons name="play" size={16} color="#fff" />
                     </View>
                   </View>
@@ -312,49 +308,35 @@ export default function Home() {
 
       {/* ── MODAL STREAK ── */}
       <Modal visible={showStreakModal} transparent animationType="slide" onRequestClose={() => setShowStreakModal(false)}>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: safeBottom + 24 }}>
-            <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginBottom: 28 }} />
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 28 }}>
-              <Ionicons name="flame" size={28} color="#FF9F0A" style={{ marginRight: 12 }} />
+        <View style={{ flex: 1, backgroundColor: MODAL_BACKDROP, justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, padding: spacing.xxxl, paddingBottom: safeBottom + spacing.xxl }}>
+            <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginBottom: spacing.huge }} />
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.huge }}>
+              <Ionicons name="flame" size={28} color={STREAK_ORANGE} style={{ marginRight: spacing.md }} />
               <View style={{ flex: 1 }}>
-                <Text style={[T.title1, { color: theme.text, fontSize: 26 }]}>{streak} dias seguidos</Text>
-                <Text style={[T.callout, { color: theme.textSecondary, marginTop: 2 }]}>Continua assim — não quebres a sequência</Text>
+                <Text variant="title1" style={{ fontSize: 26 }}>{streak} dias seguidos</Text>
+                <Text variant="callout" color="textSecondary" style={{ marginTop: 2 }}>Continua assim — não quebres a sequência</Text>
               </View>
               <TouchableOpacity onPress={() => setShowStreakModal(false)}>
                 <Ionicons name="close" size={22} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
-            <Text style={[T.caption, { color: theme.textSecondary, marginBottom: 14 }]}>Esta Semana</Text>
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 28 }}>
+            <Text variant="caption" color="textSecondary" style={{ marginBottom: 14 }}>Esta Semana</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: spacing.huge }}>
               {streakHistory.map((dayData, index) => (
-                <View key={index} style={{ flex: 1, alignItems: "center", gap: 8 }}>
-                  <Text style={[T.caption, { fontWeight: "600", color: theme.textTertiary }]}>{dayData.day}</Text>
+                <View key={index} style={{ flex: 1, alignItems: "center", gap: spacing.sm }}>
+                  <Text variant="caption" color="textTertiary" style={{ fontWeight: "600" }}>{dayData.day}</Text>
                   <View style={{ width: 38, height: 38, borderRadius: 12, justifyContent: "center", alignItems: "center", backgroundColor: dayData.completed ? theme.accentGreen : theme.backgroundTertiary }}>
-                    {dayData.completed ? <Ionicons name="checkmark" size={18} color="white" /> : <Text style={[T.subhead, { color: theme.textTertiary }]}>{new Date(dayData.date).getDate()}</Text>}
+                    {dayData.completed ? <Ionicons name="checkmark" size={18} color="white" /> : <Text variant="subhead" color="textTertiary">{new Date(dayData.date).getDate()}</Text>}
                   </View>
                 </View>
               ))}
             </View>
-            <TouchableOpacity onPress={() => setShowStreakModal(false)} style={{ backgroundColor: theme.accent, borderRadius: 16, paddingVertical: 16, alignItems: "center" }}>
-              <Text style={[{ color: "white" }, T.headline]}>Fechar</Text>
-            </TouchableOpacity>
+            <Button variant="primary" onPress={() => setShowStreakModal(false)}>Fechar</Button>
           </View>
         </View>
       </Modal>
 
-      {/* Teste do Gorila */}
-      <View style={{ position: 'absolute', bottom: 100, right: 16, gap: 8 }}>
-        <TouchableOpacity onPress={() => gorila.celebrar('Grande treino! 3 dias de streak! 🔥')} style={{ backgroundColor: '#34C759', padding: 10, borderRadius: 12 }}>
-          <Text style={[{ color: '#fff' }, T.caption]}>🎉</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => gorila.say('Dormiste mal esta noite? Vou ajustar o treino.', 'concerned')} style={{ backgroundColor: '#FF9F0A', padding: 10, borderRadius: 12 }}>
-          <Text style={[{ color: '#fff' }, T.caption]}>😟</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => gorila.show({ estado: 'challenging', texto: 'Vamos aumentar a carga hoje! Estás pronto? 💪', acoes: [{ label: 'Sim, bora!', primary: true, onPress: () => {} }, { label: 'Hoje não', onPress: () => {} }] })} style={{ backgroundColor: '#005CE6', padding: 10, borderRadius: 12 }}>
-          <Text style={[{ color: '#fff' }, T.caption]}>💪</Text>
-        </TouchableOpacity>
-      </View>
     </>
   );
 }

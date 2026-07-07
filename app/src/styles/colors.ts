@@ -6,6 +6,11 @@
  * that intentionally use a multi-color palette (see DESIGN.md: "Badge & Tier Colors").
  */
 
+/* ── Reusable semantic colors (not in theme) ── */
+export const STREAK_ORANGE = "#FF9F0A";
+export const AMBER = "#f59e0b";
+export const MODAL_BACKDROP = "rgba(0,0,0,0.55)";
+
 /* ── IMC Health Bar (WHO scale) ── */
 export const IMC_COLORS = {
   underweight: "#6b7280",

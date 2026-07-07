@@ -1,23 +1,23 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
-  Text,
-  TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import { Link, router } from "expo-router";
-import { useAuth } from "../contexts/AuthContext";
-import { useTheme } from "../styles/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../styles/theme";
+import { Text, Button, Input } from "../components/ui";
 import { authApi } from "../services/api";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
+import { spacing, radius } from "../styles/tokens";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
   const { login } = useAuth();
@@ -25,37 +25,46 @@ export default function Login() {
   const { safeTop } = useAndroidInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState<"email" | "password" | null>(null);
+
+  const emailError = useMemo(
+    () => (touched === "email" && email.trim() && !EMAIL_RE.test(email) ? "Email inválido" : undefined),
+    [email, touched]
+  );
+  const passwordError = useMemo(
+    () => (touched === "password" && password.trim().length > 0 && password.length < 6 ? "Mínimo 6 caracteres" : undefined),
+    [password, touched]
+  );
 
   async function handleLogin() {
+    setTouched("email");
+    setTouched("password");
     if (!email.trim() || !password.trim()) {
       Alert.alert("Erro", "Preenche todos os campos");
+      return;
+    }
+    if (emailError) {
+      Alert.alert("Erro", emailError);
       return;
     }
 
     setLoading(true);
     try {
-      // 1) Teste de conectividade GET simples
       const health = await authApi.testConnection();
       if (!health.sucesso) {
         Alert.alert(
           "Sem ligação ao servidor",
-          `GET /api/health falhou:\n${health.mensagem}\n\nO Android pode estar a bloquear HTTP.`
+          `GET /api/health falhou:\n${health.mensagem}`
         );
         setLoading(false);
         return;
       }
-
-      // 2) Login real
       await login(email, password);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        `[${error.name || "Erro"}]`,
-        `${error.message}`
-      );
+      Alert.alert(`[${error.name || "Erro"}]`, error.message);
     } finally {
       setLoading(false);
     }
@@ -70,131 +79,99 @@ export default function Login() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flex: 1, justifyContent: "space-between", paddingHorizontal: 28, paddingTop: safeTop + 24, paddingBottom: 48 }}>
-
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "space-between",
+            paddingHorizontal: spacing.xxl,
+            paddingTop: safeTop + 24,
+            paddingBottom: 48,
+          }}
+        >
           {/* Brand */}
           <View>
-            <View style={{
-              width: 48,
-              height: 48,
-              backgroundColor: theme.accent,
-              borderRadius: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 24,
-            }}>
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                backgroundColor: theme.accent,
+                borderRadius: radius.lg,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 24,
+              }}
+            >
               <Ionicons name="barbell" size={26} color="#fff" />
             </View>
-            <Text style={{ fontSize: 42, fontWeight: "800", color: theme.text, letterSpacing: -1.5, lineHeight: 46 }}>
+            <Text variant="display" style={{ lineHeight: 46 }}>
               GoLift
             </Text>
-            <Text style={{ color: theme.textSecondary, marginTop: 10, fontSize: 17, lineHeight: 24 }}>
-              Bem-vindo de volta
-            </Text>
+            <View style={{ marginTop: spacing.sm }}>
+              <Text variant="body" color="textSecondary">
+                Bem-vindo de volta
+              </Text>
+            </View>
           </View>
 
           {/* Form */}
-          <View>
-            {/* Email */}
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 12, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase" }}>
-                Email
-              </Text>
-              <View style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: theme.backgroundSecondary,
-                borderRadius: 14,
-                paddingHorizontal: 18,
-              }}>
-                <TextInput
-                  style={{ flex: 1, color: theme.text, paddingVertical: 16, fontSize: 16 }}
-                  placeholder="exemplo@email.com"
-                  placeholderTextColor={theme.textTertiary}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
-              </View>
-            </View>
+          <View style={{ gap: spacing.md }}>
+            <Input
+              label="Email"
+              leftIcon="mail-outline"
+              placeholder="exemplo@email.com"
+              value={email}
+              onChangeText={setEmail}
+              onBlur={() => setTouched("email")}
+              error={emailError}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
 
-            {/* Password */}
-            <View style={{ marginBottom: 14 }}>
-              <Text style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 12, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase" }}>
-                Password
-              </Text>
-              <View style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: theme.backgroundSecondary,
-                borderRadius: 14,
-                paddingHorizontal: 18,
-              }}>
-                <TextInput
-                  style={{ flex: 1, color: theme.text, paddingVertical: 16, fontSize: 16 }}
-                  placeholder="••••••••"
-                  placeholderTextColor={theme.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color={theme.textTertiary}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Input
+              label="Password"
+              leftIcon="lock-closed-outline"
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              onBlur={() => setTouched("password")}
+              error={passwordError}
+              isPassword
+              autoCapitalize="none"
+            />
 
-            {/* Esqueceu password */}
             <TouchableOpacity
-              style={{ alignSelf: "flex-end", marginBottom: 32 }}
+              style={{ alignSelf: "flex-end" }}
               onPress={() => router.push("/forgot-password")}
             >
-              <Text style={{ color: theme.accent, fontSize: 14, fontWeight: "600" }}>
+              <Text variant="callout" color="accent">
                 Esqueceste a password?
               </Text>
             </TouchableOpacity>
 
-            {/* Botão Login */}
-            <TouchableOpacity
+            <Button
+              variant="primary"
+              size="lg"
+              loading={loading}
               onPress={handleLogin}
-              disabled={loading}
-              style={{
-                backgroundColor: theme.accent,
-                paddingVertical: 18,
-                borderRadius: 16,
-                alignItems: "center",
-              }}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 17, letterSpacing: -0.3 }}>
-                  Entrar
-                </Text>
-              )}
-            </TouchableOpacity>
+              Entrar
+            </Button>
           </View>
 
           {/* Footer */}
           <View style={{ flexDirection: "row", justifyContent: "center" }}>
-            <Text style={{ color: theme.textSecondary, fontSize: 15 }}>
+            <Text variant="body" color="textSecondary">
               Não tens conta?{" "}
             </Text>
             <Link href="/register" asChild>
               <TouchableOpacity>
-                <Text style={{ color: theme.accent, fontWeight: "700", fontSize: 15 }}>
+                <Text variant="body" color="accent">
                   Criar conta
                 </Text>
               </TouchableOpacity>
             </Link>
           </View>
-
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -1,68 +1,23 @@
 import { useState, useEffect } from "react";
 import {
   View,
-  Text,
   ScrollView,
   Pressable,
   Modal,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
+import { Text, Button, Card, Input, SectionHeader, ListItem } from "../components/ui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
 import { userApi } from "../services/api";
-
-// ─── Row item ────────────────────────────────────────────────────────────────
-
-interface ItemRowProps {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  label: string;
-  onPress?: () => void;
-  destructive?: boolean;
-}
-
-function ItemRow({ icon, iconBg, label, onPress, destructive }: ItemRowProps) {
-  const theme = useTheme();
-  const tint = destructive ? "#EF4444" : iconBg;
-  const textColor = destructive ? "#EF4444" : theme.text;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.6 : 1,
-      })}
-    >
-      <View style={{
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: theme.backgroundSecondary,
-        borderRadius: 14,
-        paddingHorizontal: 18,
-        paddingVertical: 17,
-        marginBottom: 12,
-      }}>
-        <View style={{ width: 26, alignItems: "center", marginRight: 16 }}>
-          <Ionicons name={icon} size={22} color={tint} />
-        </View>
-        <Text style={{ color: textColor, fontSize: 17, fontWeight: "500", flex: 1, letterSpacing: -0.3 }}>
-          {label}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
+import { spacing, radius } from "../styles/tokens";
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -132,94 +87,86 @@ export default function Account() {
     <>
       <View style={{ flex: 1, backgroundColor: theme.background }}>
         {/* Header */}
-        <View style={{ paddingHorizontal: 24, paddingTop: safeTop + 16, paddingBottom: 16, flexDirection: "row", alignItems: "center" }}>
+        <View style={{ paddingHorizontal: spacing.xxl, paddingTop: safeTop + 16, paddingBottom: spacing.lg, flexDirection: "row", alignItems: "center" }}>
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Voltar"
             style={({ pressed }) => ({
-              width: 40, height: 40, borderRadius: 14,
+              width: 40, height: 40, borderRadius: radius.lg,
               backgroundColor: theme.backgroundSecondary,
               justifyContent: "center", alignItems: "center",
-              marginRight: 14, opacity: pressed ? 0.7 : 1,
+              marginRight: spacing.lg, opacity: pressed ? 0.7 : 1,
             })}
           >
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text, letterSpacing: -0.5, flex: 1 }}>
+          <Text variant="title2" style={{ flex: 1 }}>
             Minha Conta
           </Text>
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 60 }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.xxl, paddingBottom: 60 }}>
 
           {/* ── User card ── */}
-          <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 36 }}>
+          <Card style={{ alignItems: "center", paddingTop: spacing.sm, paddingBottom: spacing.xxxl, marginBottom: spacing.sm }}>
             <View style={{
-              width: 88, height: 88, borderRadius: 28,
+              width: 88, height: 88, borderRadius: radius.xxl,
               backgroundColor: theme.accent,
               justifyContent: "center", alignItems: "center",
-              marginBottom: 16,
+              marginBottom: spacing.lg,
               shadowColor: theme.accent,
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.3,
               shadowRadius: 16,
               elevation: 8,
             }}>
-              <Text style={{ color: "#fff", fontSize: 34, fontWeight: "800" }}>
+              <Text variant="title1" style={{ color: "#fff", fontSize: 34 }}>
                 {(user?.nome || "A").charAt(0).toUpperCase()}
               </Text>
             </View>
-            <Text style={{ color: theme.text, fontSize: 22, fontWeight: "700", letterSpacing: -0.5 }}>
+            <Text variant="title2">
               {user?.nome || "Atleta"}
             </Text>
-            <Text style={{ color: theme.textSecondary, fontSize: 14, marginTop: 4 }}>
+            <Text variant="callout" color="textSecondary" style={{ marginTop: spacing.xs }}>
               {user?.email || ""}
             </Text>
             {isAdmin && (
-              <View style={{ backgroundColor: "#EF444415", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginTop: 10 }}>
-                <Text style={{ color: "#EF4444", fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>ADMIN</Text>
+              <View style={{ backgroundColor: "#FF3B3015", borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, marginTop: spacing.sm }}>
+                <Text variant="caption" style={{ color: "#FF3B30" }}>ADMIN</Text>
               </View>
             )}
-          </View>
+          </Card>
 
           {/* ── Perfil ── */}
-          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.textSecondary, marginBottom: 14, letterSpacing: 1, textTransform: "uppercase" }}>Perfil</Text>
-          <ItemRow icon="person-outline" iconBg="#0A84FF" label="Editar Perfil" onPress={openEditModal} />
-          <ItemRow icon="settings-outline" iconBg="#636366" label="Definições" onPress={() => router.push("/settings")} />
+          <SectionHeader title="Perfil" />
+          <Card padding={0} style={{ overflow: "hidden", marginBottom: spacing.sm }}>
+            <ListItem icon="person-outline" iconBg="#0A84FF" label="Editar Perfil" onPress={openEditModal} />
+            <ListItem icon="settings-outline" iconBg="#636366" label="Definições" onPress={() => router.push("/settings")} />
+          </Card>
 
           {/* ── Suporte ── */}
-          <Text style={{ fontSize: 11, fontWeight: "700", color: theme.textSecondary, marginBottom: 14, marginTop: 28, letterSpacing: 1, textTransform: "uppercase" }}>Suporte</Text>
-          <ItemRow icon="help-circle-outline" iconBg="#F97316" label="Centro de Ajuda" onPress={() => Alert.alert("Ajuda", "Centro de ajuda em breve. Contacta-nos em suporte@golift.pt")} />
-          <ItemRow icon="shield-checkmark-outline" iconBg="#10B981" label="Política de Privacidade" onPress={() => Alert.alert("Privacidade", "Política de privacidade disponível em golift.pt/privacidade")} />
-          <ItemRow icon="document-text-outline" iconBg="#8B5CF6" label="Termos de Serviço" onPress={() => Alert.alert("Termos", "Termos de serviço disponíveis em golift.pt/termos")} />
-          <ItemRow icon="information-circle-outline" iconBg="#0A84FF" label="Sobre o GoLift" onPress={() => Alert.alert("GoLift v1.0.0", "Desenvolvido com ❤️ para atletas que levam o treino a sério.")} />
+          <SectionHeader title="Suporte" />
+          <Card padding={0} style={{ overflow: "hidden", marginBottom: spacing.sm }}>
+            <ListItem icon="help-circle-outline" iconBg="#F97316" label="Centro de Ajuda" onPress={() => Alert.alert("Ajuda", "Centro de ajuda em breve. Contacta-nos em suporte@golift.pt")} />
+            <ListItem icon="shield-checkmark-outline" iconBg="#10B981" label="Política de Privacidade" onPress={() => Alert.alert("Privacidade", "Política de privacidade disponível em golift.pt/privacidade")} />
+            <ListItem icon="document-text-outline" iconBg="#8B5CF6" label="Termos de Serviço" onPress={() => Alert.alert("Termos", "Termos de serviço disponíveis em golift.pt/termos")} />
+            <ListItem icon="information-circle-outline" iconBg="#0A84FF" label="Sobre o GoLift" onPress={() => Alert.alert("GoLift v1.0.0", "Desenvolvido com ❤️ para atletas que levam o treino a sério.")} />
+          </Card>
 
           {/* ── Admin ── */}
           {isAdmin && (
             <>
-              <Text style={{ fontSize: 11, fontWeight: "700", color: theme.textSecondary, marginBottom: 14, marginTop: 28, letterSpacing: 1, textTransform: "uppercase" }}>Administração</Text>
-              <ItemRow icon="shield-outline" iconBg="#EF4444" label="Painel de Admin" onPress={() => router.push("/admin")} />
+              <SectionHeader title="Administração" />
+              <Card padding={0} style={{ overflow: "hidden", marginBottom: spacing.sm }}>
+                <ListItem icon="shield-outline" iconBg={theme.danger} label="Painel de Admin" onPress={() => Alert.alert("Painel de Admin", "Disponível em breve.")} />
+              </Card>
             </>
           )}
 
           {/* ── Terminar Sessão ── */}
           <View style={{ marginTop: 28 }}>
-            <Pressable
-              onPress={handleLogout}
-              accessibilityRole="button"
-              accessibilityLabel="Terminar Sessão"
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            >
-              <View style={{
-                backgroundColor: theme.backgroundSecondary,
-                borderRadius: 14,
-                paddingVertical: 17,
-                alignItems: "center",
-              }}>
-                <Text style={{ color: "#EF4444", fontSize: 17, fontWeight: "500" }}>Terminar Sessão</Text>
-              </View>
-            </Pressable>
+            <Button variant="danger" onPress={handleLogout}>Terminar Sessão</Button>
           </View>
 
         </ScrollView>
@@ -238,20 +185,18 @@ export default function Account() {
             <Pressable onPress={(e) => e.stopPropagation()}>
               <View style={{
                 backgroundColor: theme.backgroundSecondary,
-                borderTopLeftRadius: 28, borderTopRightRadius: 28,
+                borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl,
                 paddingBottom: 40,
               }}>
-                <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
+                <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: spacing.md, marginBottom: spacing.xl }} />
 
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, marginBottom: 20 }}>
-                  <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>
-                    Editar Perfil
-                  </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.xxl, marginBottom: spacing.xl }}>
+                  <Text variant="title2">Editar Perfil</Text>
                   <Pressable
                     onPress={() => setShowEditModal(false)}
                     accessibilityRole="button"
                     accessibilityLabel="Fechar"
-                    style={({ pressed }) => ({ backgroundColor: theme.backgroundTertiary, borderRadius: 12, padding: 8, opacity: pressed ? 0.7 : 1 })}
+                    style={({ pressed }) => ({ backgroundColor: theme.backgroundTertiary, borderRadius: radius.md, padding: spacing.sm, opacity: pressed ? 0.7 : 1 })}
                   >
                     <Ionicons name="close" size={18} color={theme.text} />
                   </Pressable>
@@ -263,73 +208,48 @@ export default function Account() {
                   </View>
                 ) : (
                   <ScrollView
-                    contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 8 }}
+                    contentContainerStyle={{ paddingHorizontal: spacing.xxl, paddingBottom: spacing.sm }}
                     keyboardShouldPersistTaps="handled"
                   >
-                    {([
-                      { label: "Nome", value: editNome, setter: setEditNome, placeholder: "O teu nome", icon: "person-outline" as const, keyboard: "default" as const },
-                      { label: "Idade", value: editIdade, setter: setEditIdade, placeholder: "Ex: 25", icon: "calendar-outline" as const, keyboard: "numeric" as const },
-                      { label: "Peso (kg)", value: editPeso, setter: setEditPeso, placeholder: "Ex: 70", icon: "scale-outline" as const, keyboard: "decimal-pad" as const },
-                      { label: "Altura (cm)", value: editAltura, setter: setEditAltura, placeholder: "Ex: 175", icon: "resize-outline" as const, keyboard: "decimal-pad" as const },
-                    ]).map((field) => (
-                      <View key={field.label} style={{ marginBottom: 16 }}>
-                        <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
-                          {field.label}
-                        </Text>
-                        <View style={{
-                          flexDirection: "row", alignItems: "center",
-                          backgroundColor: theme.background, borderRadius: 14,
-                          paddingHorizontal: 14, borderWidth: 1,
-                          borderColor: theme.backgroundTertiary,
-                        }}>
-                          <Ionicons name={field.icon} size={18} color={theme.textSecondary} />
-                          <TextInput
-                            style={{ flex: 1, color: theme.text, paddingVertical: 14, paddingHorizontal: 10, fontSize: 16 }}
-                            placeholder={field.placeholder}
-                            placeholderTextColor={theme.textTertiary}
-                            value={field.value}
-                            onChangeText={field.setter}
-                            keyboardType={field.keyboard}
-                            returnKeyType="next"
-                          />
-                        </View>
-                      </View>
-                    ))}
+                    <Input
+                      leftIcon="person-outline"
+                      label="Nome"
+                      placeholder="O teu nome"
+                      value={editNome}
+                      onChangeText={setEditNome}
+                      containerStyle={{ marginBottom: spacing.lg }}
+                    />
+                    <Input
+                      leftIcon="calendar-outline"
+                      label="Idade"
+                      placeholder="Ex: 25"
+                      value={editIdade}
+                      onChangeText={setEditIdade}
+                      keyboardType="numeric"
+                      containerStyle={{ marginBottom: spacing.lg }}
+                    />
+                    <Input
+                      leftIcon="scale-outline"
+                      label="Peso (kg)"
+                      placeholder="Ex: 70"
+                      value={editPeso}
+                      onChangeText={setEditPeso}
+                      keyboardType="decimal-pad"
+                      containerStyle={{ marginBottom: spacing.lg }}
+                    />
+                    <Input
+                      leftIcon="resize-outline"
+                      label="Altura (cm)"
+                      placeholder="Ex: 175"
+                      value={editAltura}
+                      onChangeText={setEditAltura}
+                      keyboardType="decimal-pad"
+                      containerStyle={{ marginBottom: spacing.lg }}
+                    />
 
-                    <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
-                      <Pressable
-                        onPress={() => setShowEditModal(false)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Cancelar"
-                        style={({ pressed }) => ({
-                          flex: 1, backgroundColor: theme.background, paddingVertical: 16,
-                          borderRadius: 16, alignItems: "center",
-                          borderWidth: 1, borderColor: theme.backgroundTertiary,
-                          opacity: pressed ? 0.7 : 1,
-                        })}
-                      >
-                        <Text style={{ color: theme.text, fontWeight: "600", fontSize: 15 }}>Cancelar</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={handleSaveProfile}
-                        disabled={editSaving}
-                        accessibilityRole="button"
-                        accessibilityLabel="Guardar alterações"
-                        style={({ pressed }) => ({
-                          flex: 2, backgroundColor: theme.accent, paddingVertical: 16,
-                          borderRadius: 16, alignItems: "center",
-                          flexDirection: "row", justifyContent: "center", gap: 8,
-                          opacity: pressed || editSaving ? 0.8 : 1,
-                        })}
-                      >
-                        {editSaving
-                          ? <ActivityIndicator size="small" color="#fff" />
-                          : <Ionicons name="checkmark" size={18} color="#fff" />
-                        }
-                        <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>
-                          {editSaving ? "A guardar..." : "Guardar"}
-                        </Text>
-                      </Pressable>
+                    <View style={{ flexDirection: "row", gap: spacing.md, marginTop: spacing.sm }}>
+                      <Button variant="ghost" style={{ flex: 1 }} onPress={() => setShowEditModal(false)}>Cancelar</Button>
+                      <Button variant="primary" style={{ flex: 2 }} loading={editSaving} onPress={handleSaveProfile}>Guardar</Button>
                     </View>
                   </ScrollView>
                 )}
