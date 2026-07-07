@@ -495,7 +495,170 @@ export default function WorkoutActive() {
             <View key={exercicio.id} style={{ backgroundColor: theme.backgroundSecondary, borderRadius: 20, marginBottom: 14, overflow: "hidden", flexDirection: "row" }}>
               <View style={{ width: 4, backgroundColor: todasConcluidas ? theme.accentGreen : theme.accent }} />
               <View style={{ flex: 1, padding: 16 }}>
-                {/* ...existing code for exercise header, table, series, add series... */}
+                {/* ── Exercise Header ── */}
+                <Pressable
+                  onPress={() => autoFillFromPrevious(exercicio.id, 0)}
+                  accessibilityLabel={`${exercicio.nome}, ${concluidas} de ${exercicio.series.length} séries concluídas`}
+                  accessibilityRole="header"
+                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}
+                >
+                  <Text style={{ color: theme.text, fontSize: 16, fontWeight: "700", flex: 1 }} numberOfLines={2}>
+                    {exercicio.nome}
+                  </Text>
+                  <View style={{
+                    backgroundColor: theme.backgroundTertiary,
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    marginLeft: 8,
+                  }}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: "700" }}>
+                      {concluidas}/{exercicio.series.length}
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {/* ── Series Table ── */}
+                <View style={{ gap: 6 }}>
+                  {/* Column headers */}
+                  <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4, marginBottom: 2 }}>
+                    <Text style={{ width: 44, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
+                      SÉRIE
+                    </Text>
+                    <Text style={{ flex: 1, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
+                      PESO (kg)
+                    </Text>
+                    <Text style={{ flex: 1, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
+                      REPS
+                    </Text>
+                    <View style={{ width: 36 }} />
+                  </View>
+
+                  {/* Series rows */}
+                  {exercicio.series.map((serie: Serie, sIndex: number) => {
+                    const prevPeso = getPlaceholder(exercicio.id, sIndex, "peso");
+                    const prevReps = getPlaceholder(exercicio.id, sIndex, "repeticoes");
+                    const hasPrevious = prevPeso !== "-" && prevReps !== "-";
+                    return (
+                      <View key={sIndex} style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: theme.background,
+                        borderRadius: 12,
+                        paddingVertical: 8,
+                        paddingHorizontal: 4,
+                      }}>
+                        {/* Série number */}
+                        <View style={{ width: 44, alignItems: "center" }}>
+                          <Text style={{ color: theme.textTertiary, fontSize: 14, fontWeight: "600" }}>
+                            {serie.numero || sIndex + 1}
+                          </Text>
+                        </View>
+
+                        {/* Peso input */}
+                        <View style={{ flex: 1, paddingRight: 6 }}>
+                          <TextInput
+                            style={{
+                              backgroundColor: theme.backgroundTertiary,
+                              borderRadius: 8,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              color: theme.text,
+                              fontSize: 15,
+                              fontWeight: "600",
+                              textAlign: "center",
+                            }}
+                            placeholder={prevPeso}
+                            placeholderTextColor={theme.accent}
+                            keyboardType="decimal-pad"
+                            value={serie.peso}
+                            onChangeText={(val) => atualizarSerie(exercicio.id, sIndex, "peso", val)}
+                            onFocus={() => setFocusedField(`${exercicio.id}-${sIndex}-peso`)}
+                            onBlur={() => setFocusedField(null)}
+                            accessibilityLabel={`Peso para série ${sIndex + 1} de ${exercicio.nome}`}
+                          />
+                          {hasPrevious && !serie.peso && (
+                            <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
+                              ↑{prevPeso}kg
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Repetições input */}
+                        <View style={{ flex: 1, paddingHorizontal: 6 }}>
+                          <TextInput
+                            style={{
+                              backgroundColor: theme.backgroundTertiary,
+                              borderRadius: 8,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              color: theme.text,
+                              fontSize: 15,
+                              fontWeight: "600",
+                              textAlign: "center",
+                            }}
+                            placeholder={prevReps}
+                            placeholderTextColor={theme.accent}
+                            keyboardType="number-pad"
+                            value={serie.repeticoes}
+                            onChangeText={(val) => atualizarSerie(exercicio.id, sIndex, "repeticoes", val)}
+                            onFocus={() => setFocusedField(`${exercicio.id}-${sIndex}-reps`)}
+                            onBlur={() => setFocusedField(null)}
+                            accessibilityLabel={`Repetições para série ${sIndex + 1} de ${exercicio.nome}`}
+                          />
+                          {hasPrevious && !serie.repeticoes && (
+                            <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
+                              ↑{prevReps}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* Checkbox */}
+                        <Pressable
+                          onPress={() => {
+                            autoFillFromPrevious(exercicio.id, sIndex);
+                            toggleSerieConcluida(exercicio.id, sIndex);
+                          }}
+                          accessibilityLabel={serie.concluida ? "Marcar como não concluída" : "Marcar como concluída"}
+                          accessibilityRole="checkbox"
+                          accessibilityState={{ checked: serie.concluida }}
+                          style={{ width: 36, alignItems: "center", justifyContent: "center", paddingVertical: 4 }}
+                        >
+                          <Ionicons
+                            name={serie.concluida ? "checkmark-circle" : "ellipse-outline"}
+                            size={24}
+                            color={serie.concluida ? theme.accentGreen || "#34C759" : theme.textTertiary}
+                          />
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* ── Add Series Button ── */}
+                <Pressable
+                  onPress={() => adicionarSerie(exercicio.id)}
+                  accessibilityLabel={`Adicionar série a ${exercicio.nome}`}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    marginTop: 10,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1.5,
+                    borderStyle: "dashed",
+                    borderColor: theme.backgroundTertiary,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={theme.accent} />
+                  <Text style={{ color: theme.accent, fontSize: 13, fontWeight: "700" }}>
+                    Adicionar Série
+                  </Text>
+                </Pressable>
               </View>
             </View>
           );
