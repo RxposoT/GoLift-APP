@@ -1,9 +1,8 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import * as NavigationBar from "expo-navigation-bar";
-import * as Notifications from "expo-notifications";
-import { Platform, View } from "react-native";
+import { Platform, View, Text } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PostHogProvider } from "posthog-react-native";
 import { AuthProvider } from "../contexts/AuthContext";
@@ -11,6 +10,7 @@ import { CommunitiesProvider } from "../contexts/CommunitiesContext";
 import { ThemeProvider, useTheme, useThemePreference } from "../contexts/ThemeContext";
 import { GorilaProvider } from "../components/gorila/GorilaContext";
 import GorilaDialog from "../components/gorila/GorilaDialog";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import "../styles/global.css";
 
 const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? "";
@@ -19,6 +19,7 @@ const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posth
 function RootLayoutContent() {
   const theme = useTheme();
   const { isDark } = useThemePreference();
+  const { isOnline } = useNetworkStatus();
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -26,27 +27,6 @@ function RootLayoutContent() {
       NavigationBar.setButtonStyleAsync("light");
     }
   }, [theme.background]);
-
-  useEffect(() => {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      if (data?.screen) {
-        // Future: deep link to specific screens
-      }
-    });
-
-    return () => sub.remove();
-  }, []);
 
   return (
     <AuthProvider>
@@ -117,6 +97,13 @@ function RootLayoutContent() {
               }}
             />
           </Stack>
+          {!isOnline && (
+            <View style={{ backgroundColor: "#FF3B30", paddingVertical: 6, alignItems: "center" }}>
+              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>
+                Sem ligação à internet — dados em cache
+              </Text>
+            </View>
+          )}
           <GorilaDialog />
         </CommunitiesProvider>
       </GorilaProvider>

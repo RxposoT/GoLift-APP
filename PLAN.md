@@ -21,10 +21,11 @@
 | Perfil & Gamificação | 95% | Concluído | `main` |
 | Sincronização Peso (Backend) | 100% | Concluído | `main` |
 | UI/UX Polish (Skeletons, Animações) | 95% | Concluído | `main` |
-| **Notificações Push** | **60%** | **[AGENTE B → feat/notifications]** | `feat/notifications` |
-| **Testes (Unit + Integration)** | **30%** | **[AGENTE A → feat/tests]** | `feat/tests` |
-| CI/CD (GitHub Actions + EAS) | 0% | Pendente | `feat/ci-cd` |
-| Offline-First (Cache Local) | 0% | Pendente | `feat/offline` |
+| **Notificações Push** | **60%** | [AGENTE B → background] | `feat/notifications` |
+| **Testes (Unit + Integration)** | **30%** | [AGENTE A → background] | `feat/tests` |
+| **CI/CD (GitHub Actions + EAS)** | **100%** | **Concluído** | `main` |
+| Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
+| Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
 
 ---
 
@@ -32,8 +33,10 @@
 
 | Tarefa | Responsável | Branch | Estado |
 |--------|-------------|--------|--------|
-| Notificações Push | Agente B | `feat/notifications` | ⏳ Em progresso (6 commits: framework + push API + layout + profile UI + time picker + merge) |
-| Testes Unit + Integration | Agente A | `feat/tests` | ⏳ Em progresso (1 commit: jest config + 7 test files) |
+| Notificações Push | Agente B (background) | `feat/notifications` | ⏳ Continuar: Edge Function + streak/report |
+| Testes Unit + Integration | Agente A (background) | `feat/tests` | ⏳ Continuar: @types/jest + npm test passing |
+| CI/CD | Coordenador | `main` | ✅ Entregue: GitHub Actions + EAS dev profile |
+| Offline-First | Coordenador | `main` | ✅ Entregue: cache + sync queue + offline banner |
 
 ---
 
