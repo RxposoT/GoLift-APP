@@ -20,7 +20,7 @@
 | Perfil & Gamificação | 95% | Concluído | `main` |
 | Sincronização Peso (Backend) | 100% | Concluído | `main` |
 | UI/UX Polish (Skeletons, Animações) | 95% | Concluído | `main` |
-| **Notificações Push** | **0%** | **[LIVRE → feat/notifications]** | `feat/notifications` |
+| **Notificações Push** | **60%** | **[AGENTE B → feat/notifications]** | `feat/notifications` |
 | **Testes (Unit + Integration)** | **0%** | **[LIVRE → feat/tests]** | `feat/tests` |
 | CI/CD (GitHub Actions + EAS) | 0% | Pendente | `feat/ci-cd` |
 | Offline-First (Cache Local) | 0% | Pendente | `feat/offline` |
@@ -31,8 +31,8 @@
 
 | Tarefa | Responsável | Branch | Estado |
 |--------|-------------|--------|--------|
-| Notificações Push | Agente B | `feat/notifications` | ⏳ Por iniciar |
-| Testes Unit + Integration | Agente A | `feat/tests` | ⏳ Por iniciar |
+| Notificações Push | Agente B | `feat/notifications` | ⏳ Em progresso (5 commits: framework + push API + layout + profile UI + time picker) |
+| Testes Unit + Integration | LIVRE | `feat/tests` | ⏳ Por iniciar |
 
 ---
 
