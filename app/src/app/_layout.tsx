@@ -1,8 +1,10 @@
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import * as NavigationBar from "expo-navigation-bar";
-import { Platform, View, Text } from "react-native";
+import * as Notifications from "expo-notifications";
+import * as Linking from "expo-linking";
+import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PostHogProvider } from "posthog-react-native";
 import { AuthProvider } from "../contexts/AuthContext";
@@ -10,11 +12,54 @@ import { CommunitiesProvider } from "../contexts/CommunitiesContext";
 import { ThemeProvider, useTheme, useThemePreference } from "../contexts/ThemeContext";
 import { GorilaProvider } from "../components/gorila/GorilaContext";
 import GorilaDialog from "../components/gorila/GorilaDialog";
+import { Text } from "../components/ui";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import "../styles/global.css";
 
 const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? "";
 const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+function normalizeRouteFromNotificationData(data?: Record<string, unknown>): string | null {
+  const candidate =
+    typeof data?.path === "string"
+      ? data.path
+      : typeof data?.route === "string"
+        ? data.route
+        : typeof data?.url === "string"
+          ? data.url
+          : null;
+
+  if (!candidate) return null;
+
+  if (candidate.startsWith("http://") || candidate.startsWith("https://") || candidate.startsWith("exp://")) {
+    const parsed = Linking.parse(candidate);
+    if (!parsed.path) return null;
+    return `/${parsed.path}`;
+  }
+
+  return candidate.startsWith("/") ? candidate : `/${candidate}`;
+}
+
+function routeFromNotification(data?: Record<string, unknown>) {
+  const route = normalizeRouteFromNotificationData(data);
+  if (!route) return;
+
+  try {
+    router.push(route as never);
+  } catch {
+    // noop
+  }
+}
 
 function RootLayoutContent() {
   const theme = useTheme();
@@ -27,6 +72,24 @@ function RootLayoutContent() {
       NavigationBar.setButtonStyleAsync("light");
     }
   }, [theme.background]);
+
+  useEffect(() => {
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      routeFromNotification(response.notification.request.content.data as Record<string, unknown>);
+    });
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) {
+          routeFromNotification(response.notification.request.content.data as Record<string, unknown>);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      responseListener.remove();
+    };
+  }, []);
 
   return (
     <AuthProvider>
@@ -99,7 +162,7 @@ function RootLayoutContent() {
           </Stack>
           {!isOnline && (
             <View style={{ backgroundColor: "#FF3B30", paddingVertical: 6, alignItems: "center" }}>
-              <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>
+              <Text variant="subhead" style={{ color: "#fff", fontWeight: "600" }}>
                 Sem ligação à internet — dados em cache
               </Text>
             </View>
