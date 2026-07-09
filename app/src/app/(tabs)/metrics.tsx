@@ -491,17 +491,27 @@ export default function Metrics() {
           { key: 'calendario' as const, label: 'Calendário' },
           { key: 'recordes' as const, label: 'Recordes' },
           { key: 'ia' as const, label: '✦ IA' },
-        ]).map((tab) => (
-          <Button
-            key={tab.key}
-            variant={activeMetricsTab === tab.key ? "primary" : "secondary"}
-            size="sm"
-            style={{ flex: 1 }}
-            onPress={() => handleTabChange(tab.key)}
-          >
-            {tab.label}
-          </Button>
-        ))}
+        ]).map((tab) => {
+          const isActive = activeMetricsTab === tab.key;
+          return (
+            <Button
+              key={tab.key}
+              variant={isActive ? "primary" : "secondary"}
+              size="sm"
+              style={{
+                flex: 1,
+                backgroundColor: isActive ? undefined : theme.backgroundTertiary,
+              }}
+              onPress={() => handleTabChange(tab.key)}
+            >
+              {isActive ? tab.label : (
+                <Text style={{ color: theme.textSecondary, fontWeight: "600", fontSize: 13 }}>
+                  {tab.label}
+                </Text>
+              )}
+            </Button>
+          );
+        })}
       </View>
 
       {/* ── TAB: Progresso ── */}
