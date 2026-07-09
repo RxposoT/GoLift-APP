@@ -43,9 +43,9 @@ export default function WorkoutDetailModal({
               <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>
                 {workoutDetails?.nome_treino || selectedDayWorkout?.nome_treino || selectedDayWorkout?.nome || "Treino"}
               </Text>
-              {(workoutDetails?.data_inicio || selectedDayWorkout?.data_inicio || selectedDayWorkout?.data) && (
+              {(workoutDetails?.data_fim || workoutDetails?.data_inicio || selectedDayWorkout?.data_fim || selectedDayWorkout?.data_inicio || selectedDayWorkout?.data) && (
                 <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>
-                  {formatDateTime(workoutDetails?.data_inicio || selectedDayWorkout?.data_inicio || selectedDayWorkout?.data)}
+                  {formatDateTime(workoutDetails?.data_fim || workoutDetails?.data_inicio || selectedDayWorkout?.data_fim || selectedDayWorkout?.data_inicio || selectedDayWorkout?.data)}
                 </Text>
               )}
             </View>

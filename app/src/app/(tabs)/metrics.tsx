@@ -22,6 +22,7 @@ import RecordesTab from "../../components/metrics/RecordesTab";
 import WorkoutDetailModal from "../../components/metrics/WorkoutDetailModal";
 import { spacing, radius } from "../../styles/tokens";
 import { MODAL_BACKDROP } from "../../styles/colors";
+import { formatTime } from "../../utils/format";
 
 export default function Metrics() {
   const { user } = useAuth();
@@ -211,15 +212,16 @@ export default function Metrics() {
 
       setRecords(recordsData || []);
       
-      if (profileData?.user) {
+      const profile = profileData?.user || profileData;
+      if (profile) {
         setProfile({
-          peso: profileData.user.weight,
-          altura: profileData.user.height,
-          idade: profileData.user.age,
-          pesoAlvo: profileData.user.pesoAlvo,
-          objetivo: profileData.user.objetivo,
+          peso: profile.weight,
+          altura: profile.height,
+          idade: profile.age,
+          pesoAlvo: profile.pesoAlvo,
+          objetivo: profile.objetivo,
         });
-        await loadWeightHistory(profileData.user.weight);
+        await loadWeightHistory(profile.weight);
       }
       
       const historyItems = historyData || [];
@@ -229,7 +231,7 @@ export default function Metrics() {
       const workoutMap: {[key: string]: any} = {};
       
       (Array.isArray(historyItems) ? historyItems : []).forEach((item: any) => {
-        const dateStr = item.data_inicio || item.data_treino || item.data;
+        const dateStr = item.data_fim || item.data_inicio || item.data_treino || item.data;
         if (dateStr) {
           const date = new Date(dateStr);
           const year = date.getFullYear();
@@ -262,13 +264,6 @@ export default function Metrics() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  }
-
-  function formatTime(seconds: number) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes} min`;
   }
 
   function formatDate(dateString: string) {

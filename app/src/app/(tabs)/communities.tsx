@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Text } from "../../components/ui";
+import { Text, Input } from "../../components/ui";
 import { useCommunities } from "../../contexts/CommunitiesContext";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
@@ -473,24 +473,14 @@ export default function Communities() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: safeBottom + 20 }}>
 
               {/* Nome */}
-              <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                Nome da Comunidade
-              </Text>
-              <View style={{
-                flexDirection: "row", alignItems: "center",
-                backgroundColor: theme.backgroundSecondary,
-                borderRadius: 14, borderWidth: 1, borderColor: theme.border,
-                paddingHorizontal: 14, marginBottom: 20,
-              }}>
-                <Ionicons name="people-outline" size={18} color={theme.textTertiary} style={{ marginRight: 10 }} />
-                <TextInput
-                  placeholder="Ex: Athletes Portugal"
-                  placeholderTextColor={theme.textTertiary}
-                  value={communityName}
-                  onChangeText={setCommunityName}
-                  style={{ flex: 1, color: theme.text, fontSize: 15, paddingVertical: 14 }}
-                />
-              </View>
+              <Input
+                label="Nome da Comunidade"
+                placeholder="Ex: Athletes Portugal"
+                value={communityName}
+                onChangeText={setCommunityName}
+                leftIcon="people"
+                containerStyle={{ marginBottom: 20 }}
+              />
 
               {/* Descrição */}
               <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>

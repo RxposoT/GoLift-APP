@@ -24,6 +24,8 @@ import {
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { getIMCCategory } from "../../utils/imc";
+import { formatTime, formatRelativeDate } from "../../utils/format";
+import { generateStreakWeek, WeekDay } from "../../utils/streak";
 import { ProfileScreenSkeleton } from "../../components/ui/SkeletonLoader";
 import { IMC_COLORS, BADGE_COLORS, AMBER, MODAL_BACKDROP } from "../../styles/colors";
 import { spacing, radius, iconSize } from "../../styles/tokens";
@@ -37,51 +39,6 @@ interface Badge {
   unlocked: boolean;
   unlockedAt?: string;
   lockHint: string;
-}
-
-interface WeekDay {
-  day: string;
-  date: string;
-  completed: boolean;
-}
-
-function formatTimeHelper(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes} min`;
-}
-
-function relativeDate(dateStr: string | null | undefined): string | null {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return null;
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "hoje";
-  if (diffDays === 1) return "ontem";
-  if (diffDays < 7) return `há ${diffDays} dias`;
-  if (diffDays < 30) return `há ${Math.floor(diffDays / 7)} sem.`;
-  if (diffDays < 365) return `há ${Math.floor(diffDays / 30)} meses`;
-  return `há ${Math.floor(diffDays / 365)} ano${Math.floor(diffDays / 365) > 1 ? "s" : ""}`;
-}
-
-function generateStreakWeek(): WeekDay[] {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - daysFromMonday);
-  const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + i);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return { day: dayNames[i], date: `${y}-${m}-${d}`, completed: false };
-  });
 }
 
 const IMC_SEGMENTS: Array<{ color: string; from: number; to: number }> = [
@@ -346,7 +303,7 @@ export default function Profile() {
     if (streak >= 7) return `Em chamas · ${streak} dias seguidos 🔥`;
     if (streak >= 3) return `${streak} dias consecutivos · continua assim`;
     if (streak === 0 && lastSession) {
-      const ago = relativeDate(lastSession.data_fim || lastSession.data_inicio);
+      const ago = formatRelativeDate(lastSession.data_fim || lastSession.data_inicio);
       return ago ? `Último treino ${ago}` : "Volta ao ritmo";
     }
     if (!lastSession) return "Começa hoje — o primeiro passo é o mais difícil";
@@ -377,6 +334,20 @@ export default function Profile() {
           <Text variant="title1" color="text" style={{ flex: 1 }}>
             Perfil
           </Text>
+          <Pressable
+            onPress={() => router.push("/admin" as any)}
+            accessibilityRole="button"
+            accessibilityLabel="Painel Admin"
+            style={({ pressed }) => ({
+              width: 40, height: 40, borderRadius: radius.lg,
+              backgroundColor: theme.accent,
+              justifyContent: "center", alignItems: "center",
+              opacity: pressed ? 0.7 : 1,
+              marginRight: spacing.xxxl,
+            })}
+          >
+            <Ionicons name="terminal" size={iconSize.sm} color="#FFFFFF" />
+          </Pressable>
           <Pressable
             onPress={() => router.push("/account")}
             accessibilityRole="button"
@@ -466,7 +437,7 @@ export default function Profile() {
 
         <View style={{ paddingHorizontal: spacing.xxl, flexDirection: "row", flexWrap: "wrap", gap: spacing.md, marginBottom: radius.xxl }}>
           {([
-            { label: "Tempo Total",    value: formatTimeHelper(stats.totalTime) },
+            { label: "Tempo Total",    value: formatTime(stats.totalTime) },
             { label: "Melhor Streak",  value: `${streakData.maxStreak}d` },
             { label: "Este Mês",       value: `${stats.thisMonth}` },
             { label: "Recordes",       value: `${records.length}` },
@@ -493,8 +464,8 @@ export default function Profile() {
                     {lastSession.nome_treino || lastSession.nome || "Treino"}
                   </Text>
                   <Text variant="subhead" color="textSecondary">
-                    {relativeDate(lastSession.data_fim || lastSession.data_inicio)}
-                    {(lastSession.duracao_segundos || 0) > 0 ? ` · ${formatTimeHelper(lastSession.duracao_segundos)}` : ""}
+                    {formatRelativeDate(lastSession.data_fim || lastSession.data_inicio)}
+                    {(lastSession.duracao_segundos || 0) > 0 ? ` · ${formatTime(lastSession.duracao_segundos)}` : ""}
                   </Text>
                 </View>
                 <Button
@@ -571,7 +542,7 @@ export default function Profile() {
               {records.slice(0, 3).map((record, i) => {
                 const medalColors = [AMBER, "#94a3b8", "#cd7f32"];
                 const color = medalColors[i];
-                const dateStr = relativeDate(record.data_recorde || record.data || record.created_at);
+                const dateStr = formatRelativeDate(record.data_recorde || record.data || record.created_at);
                 const nome = record.nome_exercicio || record.exercicio || record.exercise || "";
                 const exercicioId = record.id_exercicio || record.exercicio_id;
 
@@ -729,6 +700,7 @@ export default function Profile() {
           </Card>
         </View>
 
+
         <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.sm }}>
           <Button
             variant="secondary"
@@ -765,7 +737,7 @@ export default function Profile() {
               <Card padding={0} style={{ overflow: "hidden" }}>
                 {records.map((record, i) => {
                   const mc = [AMBER, "#94a3b8", "#cd7f32"];
-                  const dateStr = relativeDate(record.data_recorde || record.data || record.created_at);
+                  const dateStr = formatRelativeDate(record.data_recorde || record.data || record.created_at);
                   return (
                     <Pressable
                       key={i}
@@ -835,7 +807,7 @@ export default function Profile() {
               </Text>
               {selectedBadge?.unlocked && selectedBadge.unlockedAt && (
                 <Text variant="footnote" color="textTertiary" style={{ marginBottom: spacing.md }}>
-                  Desbloqueada {relativeDate(selectedBadge.unlockedAt)}
+                  Desbloqueada {formatRelativeDate(selectedBadge.unlockedAt)}
                 </Text>
               )}
               {!selectedBadge?.unlocked && (

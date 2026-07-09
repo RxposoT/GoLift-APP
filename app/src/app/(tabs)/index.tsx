@@ -15,6 +15,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { metricsApi, workoutApi, planoApi } from "../../services/api";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
+import { formatTime, formatRelativeDate } from "../../utils/format";
+import { generateStreakWeek } from "../../utils/streak";
 import StreakBar from "../../components/StreakBar";
 import { supabase } from "../../lib/supabase";
 import { useGorila } from "../../components/gorila/GorilaContext";
@@ -56,25 +58,6 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [user])
 
-  function generateStreakWeek() {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - daysFromMonday);
-    const weekDays = [];
-    const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + i);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      weekDays.push({ day: dayNames[i], date: `${year}-${month}-${day}`, completed: false });
-    }
-    return weekDays;
-  }
-
   async function loadData() {
     try {
       const profileRes = await supabase.from("profiles").select("xp, nivel").eq("id", user!.id).maybeSingle();
@@ -89,7 +72,7 @@ export default function Home() {
       setPrecisaCheckin(!checkinHoje);
       if (profile) { setXP(profile.xp ?? 0); setNivel(profile.nivel ?? 1); }
       const historyItems: any[] = await metricsApi.getHistory(user!.id).catch(() => []);
-      const recentSessions = [...historyItems].filter((s: any) => s.id_treino && (s.data_inicio || s.data))
+      const recentSessions = [...historyItems].filter((s: any) => s.id_treino && (s.data_fim || s.data_inicio || s.data))
         .sort((a: any, b: any) => new Date(b.data_inicio || b.data).getTime() - new Date(a.data_inicio || a.data).getTime())
         .slice(0, 3);
       if (recentSessions.length === 0) {
@@ -98,7 +81,7 @@ export default function Home() {
         setRecentWorkouts(workoutsList.filter((w: any) => { const k = w.nome || w.name || w.id_treino; if (seenWorkouts.has(k)) return false; seenWorkouts.add(k); return true; }).slice(0, 3));
       } else { setRecentWorkouts(recentSessions); }
       const weekDays = generateStreakWeek();
-      const workoutDates = new Set(historyItems.map((item: any) => { const ds = item.data_inicio || item.data; if (ds) { const d = new Date(ds); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } return null; }).filter(Boolean) as string[]);
+      const workoutDates = new Set(historyItems.map((item: any) => { const ds = item.data_fim || item.data_inicio || item.data; if (ds) { const d = new Date(ds); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; } return null; }).filter(Boolean) as string[]);
       weekDays.forEach(d => { d.completed = workoutDates.has(d.date); });
       setStreakHistory(weekDays);
       if (statsData) setStats(statsData);
@@ -129,22 +112,6 @@ export default function Home() {
     if (s <= 15) return "#f59e0b";
     if (s <= 20) return theme.accent;
     return "#d946ef";
-  }
-
-  function formatSessionAge(dateStr: string): string {
-    if (!dateStr) return "";
-    const diffDays = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-    if (diffDays === 0) return "Hoje";
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) return `Há ${diffDays} dias`;
-    if (diffDays < 30) return `Há ${Math.floor(diffDays / 7)} sem.`;
-    return `Há ${Math.floor(diffDays / 30)} mês`;
-  }
-
-  function formatTime(seconds: number) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   }
 
   return (
@@ -291,7 +258,7 @@ export default function Home() {
                         {workout.nome || workout.nome_treino || workout.name || "Treino"}
                       </Text>
                       <Text variant="subhead" color="textSecondary">
-                        {(workout.data_inicio || workout.data) ? formatSessionAge(workout.data_inicio || workout.data) : `${workout.num_exercicios ?? 0} exercícios`}
+                        {(workout.data_inicio || workout.data) ? formatRelativeDate(workout.data_inicio || workout.data) : `${workout.num_exercicios ?? 0} exercícios`}
                         {(workout.duracao_segundos || 0) > 0 ? ` · ${formatTime(workout.duracao_segundos)}` : ""}
                       </Text>
                     </View>

@@ -28,6 +28,16 @@ jest.mock("expo-router", () => ({
   router: { replace: jest.fn() },
 }));
 
+jest.mock("posthog-react-native", () => {
+  const stablePostHog = {
+    identify: jest.fn(),
+    capture: jest.fn(),
+    reset: jest.fn(),
+    captureException: jest.fn(),
+  };
+  return { usePostHog: () => stablePostHog };
+});
+
 // Import mocks for local access
 const { supabase } = jest.requireMock("../../src/lib/supabase");
 const { authApi } = jest.requireMock("../../src/services/api");

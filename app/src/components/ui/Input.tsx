@@ -1,18 +1,18 @@
 import React, { useState } from "react";
 import {
+  TextInput as RNTextInput,
+  TextInputProps as RNTextInputProps,
   View,
-  TextInput,
-  TextInputProps,
-  TouchableOpacity,
+  Pressable,
   StyleProp,
   ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../styles/theme";
-import { radius, spacing } from "../../styles/tokens";
 import { Text } from "./Text";
+import { radius, spacing } from "../../styles/tokens";
 
-type InputProps = TextInputProps & {
+type InputProps = RNTextInputProps & {
   label?: string;
   error?: string;
   leftIcon?: keyof typeof Ionicons.glyphMap;
@@ -24,87 +24,86 @@ export function Input({
   label,
   error,
   leftIcon,
-  isPassword = false,
+  isPassword,
   containerStyle,
   style,
   onFocus,
   onBlur,
-  ...props
+  ...rest
 }: InputProps) {
   const theme = useTheme();
-  const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={[{ gap: spacing.xs }, containerStyle]}>
-      {label ? (
+      {label && (
         <Text variant="subhead" color="textSecondary">
           {label}
         </Text>
-      ) : null}
+      )}
 
       <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          borderWidth: 1,
-          borderRadius: radius.lg,
-          backgroundColor: theme.backgroundSecondary,
-          borderColor: error ? theme.danger : isFocused ? theme.accent : theme.border,
-          paddingHorizontal: spacing.md,
-        }}
+        style={[
+          {
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: theme.backgroundSecondary,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: error ? theme.danger : focused ? theme.accent : theme.border,
+            paddingHorizontal: spacing.md,
+          },
+        ]}
       >
-        {leftIcon ? (
+        {leftIcon && (
           <Ionicons
             name={leftIcon}
             size={18}
-            color={isFocused ? theme.accent : theme.textTertiary}
+            color={focused ? theme.accent : theme.textTertiary}
             style={{ marginRight: spacing.sm }}
           />
-        ) : null}
+        )}
 
-        <TextInput
-          {...props}
+        <RNTextInput
           style={[
             {
               flex: 1,
               color: theme.text,
+              fontSize: 15,
               paddingVertical: spacing.md,
-            },
+              outline: "none",
+              outlineWidth: 0,
+            } as any,
             style,
           ]}
           placeholderTextColor={theme.textTertiary}
           secureTextEntry={isPassword && !showPassword}
-          onFocus={(e) => {
-            setIsFocused(true);
-            onFocus?.(e);
-          }}
-          onBlur={(e) => {
-            setIsFocused(false);
-            onBlur?.(e);
-          }}
+          onFocus={(e) => { setFocused(true); onFocus?.(e); }}
+          onBlur={(e) => { setFocused(false); onBlur?.(e); }}
+          {...rest}
         />
 
-        {isPassword ? (
-          <TouchableOpacity
-            accessibilityRole="button"
+        {isPassword && (
+          <Pressable
+            onPress={() => setShowPassword(!showPassword)}
+            hitSlop={8}
             accessibilityLabel={showPassword ? "Ocultar password" : "Mostrar password"}
-            onPress={() => setShowPassword((prev) => !prev)}
           >
             <Ionicons
               name={showPassword ? "eye-off-outline" : "eye-outline"}
-              size={18}
+              size={20}
               color={theme.textTertiary}
             />
-          </TouchableOpacity>
-        ) : null}
+          </Pressable>
+        )}
       </View>
 
-      {error ? (
-        <Text variant="footnote" color="danger">
+      {error && (
+        <Text variant="footnote" color="textSecondary" style={{ color: theme.danger }}>
           {error}
         </Text>
-      ) : null}
+      )}
     </View>
   );
 }
