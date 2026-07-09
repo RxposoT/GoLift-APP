@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { planoApi } from "../services/api";
 import { useTheme } from "../styles/theme";
@@ -94,6 +95,7 @@ function getFocoColor(foco: string): string {
 }
 
 export default function AIPlan() {
+  const posthog = usePostHog();
   const { user } = useAuth();
   const theme = useTheme();
   const { safeTop, safeBottom } = useAndroidInsets();
@@ -156,8 +158,16 @@ export default function AIPlan() {
     try {
       await planoApi.importPlanDay(user!.id, dia.dia, dia.foco, dia.exercicios);
       setImportedDays(prev => new Set([...prev, idx]));
+      posthog.capture("ai_plan_day_imported", {
+        plan_day: dia.dia,
+        focus: dia.foco,
+        exercise_count: dia.exercicios.length,
+      });
       Alert.alert("Treino adicionado!", `"${dia.dia}" foi adicionado aos teus treinos.`);
     } catch (err: any) {
+      posthog.captureException(err as Error, {
+        context: "ai_plan_import_day",
+      });
       Alert.alert("Erro", err?.message || "Não foi possível importar o treino.");
     } finally {
       setImportingDay(null);
@@ -207,8 +217,19 @@ export default function AIPlan() {
         setMes(data.mes || "");
         setPodeGerar(false);
         setDiaExpandido(0);
+        posthog.capture("ai_plan_generated", {
+          days_per_week: wDias,
+          workout_minutes: wTempo,
+          objective: wObjetivo,
+          target_count: wTargets.length,
+          has_constraints: Boolean(wCondicoes.trim()),
+          rest_seconds: wDescanso,
+        });
       }
     } catch (err: any) {
+      posthog.captureException(err as Error, {
+        context: "ai_plan_generate",
+      });
       Alert.alert(
         err?.message?.includes("Limite") ? "IA Indisponível" : "Erro",
         err?.message || "Não foi possível gerar o plano. Tenta mais tarde."

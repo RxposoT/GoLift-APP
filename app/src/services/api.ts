@@ -7,6 +7,7 @@ export { communitiesApi } from "./api/communities";
 export { planoApi } from "./api/plano";
 export { weightApi } from "./api/weight";
 export { pushApi } from "./api/push";
+export { adminApi } from "./api/admin";
 
 import { authApi } from "./api/auth";
 import { userApi } from "./api/user";
@@ -17,6 +18,7 @@ import { communitiesApi } from "./api/communities";
 import { planoApi } from "./api/plano";
 import { weightApi } from "./api/weight";
 import { pushApi } from "./api/push";
+import { adminApi } from "./api/admin";
 
 export default {
   auth: authApi,
@@ -28,4 +30,5 @@ export default {
   plano: planoApi,
   weight: weightApi,
   push: pushApi,
+  admin: adminApi,
 };

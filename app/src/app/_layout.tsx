@@ -1,12 +1,12 @@
-import { Stack, router } from "expo-router";
+import { Stack, router, useGlobalSearchParams, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as NavigationBar from "expo-navigation-bar";
 import * as Notifications from "expo-notifications";
 import * as Linking from "expo-linking";
 import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { PostHogProvider } from "posthog-react-native";
+import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { AuthProvider } from "../contexts/AuthContext";
 import { CommunitiesProvider } from "../contexts/CommunitiesContext";
 import { ThemeProvider, useTheme, useThemePreference } from "../contexts/ThemeContext";
@@ -14,10 +14,27 @@ import { GorilaProvider } from "../components/gorila/GorilaContext";
 import GorilaDialog from "../components/gorila/GorilaDialog";
 import { Text } from "../components/ui";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { posthog } from "../lib/posthog";
 import "../styles/global.css";
 
-const POSTHOG_API_KEY = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? "";
-const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+function ScreenTracker() {
+  const pathname = usePathname();
+  const params = useGlobalSearchParams();
+  const posthog = usePostHog();
+  const previousPathname = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (previousPathname.current !== pathname) {
+      posthog.screen(pathname, {
+        previous_screen: previousPathname.current ?? null,
+        ...params,
+      });
+      previousPathname.current = pathname;
+    }
+  }, [params, pathname, posthog]);
+
+  return null;
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -178,7 +195,16 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <PostHogProvider apiKey={POSTHOG_API_KEY} options={{ host: POSTHOG_HOST }}>
+        <PostHogProvider
+          client={posthog}
+          autocapture={{
+            captureScreens: false,
+            captureTouches: true,
+            propsToCapture: ["testID"],
+            maxElementsCaptured: 20,
+          }}
+        >
+          <ScreenTracker />
           <RootLayoutContent />
         </PostHogProvider>
       </ThemeProvider>

@@ -11,6 +11,7 @@ const planRoutes = require('./ai/plan.routes');
 const feedbackRoutes = require('./ai/feedback.routes');
 const adaptRoutes = require('./ai/adapt.routes');
 const paymentRoutes = require('./stripe/payment.routes');
+const adminRoutes = require('./admin.routes');
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use('/ai/plan', planRoutes);
 router.use('/ai/feedback', feedbackRoutes);
 router.use('/ai/adapt', adaptRoutes);
 router.use('/stripe', paymentRoutes);
+router.use('/admin', adminRoutes);
 
 module.exports = router;

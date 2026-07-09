@@ -5,6 +5,7 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
@@ -20,6 +21,7 @@ const SLEEP_OPTIONS = [
 ];
 
 export default function DailyCheckin() {
+  const posthog = usePostHog();
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
   const { user } = useAuth();
@@ -69,9 +71,20 @@ export default function DailyCheckin() {
         prontidao_score: Math.max(1, Math.min(score, 10)),
       }, { onConflict: "user_id,data" });
 
+      posthog.capture("daily_checkin_completed", {
+        sleep_hours: sonoHoras,
+        sleep_quality: sonoQualidade,
+        energy_level: energia,
+        stress_level: stress,
+        soreness_zone_count: musculoDolorido.length,
+        readiness_score: Math.max(1, Math.min(score, 10)),
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace("/");
     } catch (err) {
+      posthog.captureException(err as Error, {
+        context: "daily_checkin_save",
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);

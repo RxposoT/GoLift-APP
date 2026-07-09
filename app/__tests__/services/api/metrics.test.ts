@@ -16,8 +16,8 @@ const mockFrom = jest.fn(() => buildQuery(mockFromResult));
 
 jest.mock("../../../src/lib/supabase", () => ({
   supabase: {
-    from: (...args: any[]) => mockFrom(...args),
-    rpc: (...args: any[]) => mockRpc(...args),
+    from: (...args: any[]) => (mockFrom as any)(...args),
+    rpc: (...args: any[]) => (mockRpc as any)(...args),
   },
 }));
 

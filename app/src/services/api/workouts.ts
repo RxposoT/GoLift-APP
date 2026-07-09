@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import { posthog } from "../../lib/posthog";
 
 export const workoutApi = {
   getUserWorkouts: async (userId: string) => {
@@ -38,7 +39,12 @@ export const workoutApi = {
       .select("id")
       .single();
 
-    if (wErr) throw wErr;
+    if (wErr) {
+      posthog.captureException(wErr as Error, {
+        context: "workout_create",
+      });
+      throw wErr;
+    }
 
     if (exercicios.length > 0) {
       const { error: eErr } = await supabase.from("workout_exercises").insert(
@@ -47,8 +53,19 @@ export const workoutApi = {
           exercise_id: exId,
         }))
       );
-      if (eErr) throw eErr;
+      if (eErr) {
+        posthog.captureException(eErr as Error, {
+          context: "workout_create_exercises",
+        });
+        throw eErr;
+      }
     }
+
+    posthog.capture("workout_created", {
+      workout_id: workout.id,
+      exercise_count: exercicios.length,
+      is_ai_workout: false,
+    });
 
     return { sucesso: true, id_treino: workout.id };
   },
@@ -59,9 +76,20 @@ export const workoutApi = {
       .update({ nome })
       .eq("id", treinoId)
       .eq("user_id", userId);
-    if (nErr) throw nErr;
+    if (nErr) {
+      posthog.captureException(nErr as Error, {
+        context: "workout_update",
+      });
+      throw nErr;
+    }
 
-    await supabase.from("workout_exercises").delete().eq("workout_id", treinoId);
+    const { error: deleteErr } = await supabase.from("workout_exercises").delete().eq("workout_id", treinoId);
+    if (deleteErr) {
+      posthog.captureException(deleteErr as Error, {
+        context: "workout_update_delete_exercises",
+      });
+      throw deleteErr;
+    }
 
     if (exercicios.length > 0) {
       const { error: eErr } = await supabase.from("workout_exercises").insert(
@@ -70,8 +98,18 @@ export const workoutApi = {
           exercise_id: exId,
         }))
       );
-      if (eErr) throw eErr;
+      if (eErr) {
+        posthog.captureException(eErr as Error, {
+          context: "workout_update_exercises",
+        });
+        throw eErr;
+      }
     }
+
+    posthog.capture("workout_updated", {
+      workout_id: treinoId,
+      exercise_count: exercicios.length,
+    });
 
     return { sucesso: true };
   },
@@ -82,7 +120,17 @@ export const workoutApi = {
       .delete()
       .eq("id", treinoId)
       .eq("user_id", userId);
-    if (error) throw error;
+    if (error) {
+      posthog.captureException(error as Error, {
+        context: "workout_delete",
+      });
+      throw error;
+    }
+
+    posthog.capture("workout_deleted", {
+      workout_id: treinoId,
+    });
+
     return { sucesso: true };
   },
 
@@ -103,7 +151,12 @@ export const workoutApi = {
       .select("id")
       .single();
 
-    if (sErr) throw sErr;
+    if (sErr) {
+      posthog.captureException(sErr as Error, {
+        context: "workout_session_save",
+      });
+      throw sErr;
+    }
 
     if (series.length > 0) {
       const { error: setsErr } = await supabase.from("workout_sets").insert(
@@ -115,8 +168,20 @@ export const workoutApi = {
           peso: s.peso,
         }))
       );
-      if (setsErr) throw setsErr;
+      if (setsErr) {
+        posthog.captureException(setsErr as Error, {
+          context: "workout_session_sets_save",
+        });
+        throw setsErr;
+      }
     }
+
+    posthog.capture("workout_session_saved", {
+      workout_id: treinoId,
+      session_id: session.id,
+      duration_seconds: duracao_segundos,
+      set_count: series.length,
+    });
 
     return { sucesso: true, id_sessao: session.id };
   },

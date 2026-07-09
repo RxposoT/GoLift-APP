@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   ScrollView,
@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { Text, Button, Card, Input, SectionHeader, ListItem } from "../components/ui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
@@ -22,6 +23,7 @@ import { spacing, radius } from "../styles/tokens";
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Account() {
+  const posthog = usePostHog();
   const { user, logout } = useAuth();
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
@@ -67,9 +69,22 @@ export default function Account() {
         peso: editPeso ? parseFloat(editPeso) : null,
         altura: editAltura ? parseFloat(editAltura) : null,
       });
+      posthog.capture("profile_updated", {
+        updated_age: Boolean(editIdade),
+        updated_weight: Boolean(editPeso),
+        updated_height: Boolean(editAltura),
+      });
+      posthog.identify(user!.id, {
+        $set: {
+          nome: editNome.trim(),
+        },
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowEditModal(false);
     } catch (error: any) {
+      posthog.captureException(error as Error, {
+        context: "profile_update",
+      });
       Alert.alert("Erro", error.message || "Não foi possível guardar. Tenta novamente.");
     } finally {
       setEditSaving(false);
@@ -159,7 +174,7 @@ export default function Account() {
             <>
               <SectionHeader title="Administração" />
               <Card padding={0} style={{ overflow: "hidden", marginBottom: spacing.sm }}>
-                <ListItem icon="shield-outline" iconBg={theme.danger} label="Painel de Admin" onPress={() => Alert.alert("Painel de Admin", "Disponível em breve.")} />
+                <ListItem icon="shield-outline" iconBg={theme.danger} label="Painel de Admin" onPress={() => router.push("/admin" as any)} />
               </Card>
             </>
           )}

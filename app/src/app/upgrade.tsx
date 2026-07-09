@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Pressable,
   ActivityIndicator,
   Alert,
@@ -11,6 +10,7 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
+import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { planoApi } from "../services/api";
 import { useTheme } from "../styles/theme";
@@ -32,6 +32,7 @@ const PRO_FEATURES = [
 ];
 
 export default function Upgrade() {
+  const posthog = usePostHog();
   const { user } = useAuth();
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
@@ -61,19 +62,39 @@ export default function Upgrade() {
     setCheckoutLoading(true);
     try {
       const data = await planoApi.createCheckoutSession(user.id);
+      posthog.capture("subscription_checkout_started", {
+        source: "upgrade_screen",
+        current_plan: plano,
+      });
+
       if (data.url) {
         const result = await WebBrowser.openBrowserAsync(data.url);
-        // Após fechar o browser, verificar sessão como fallback (webhook pode demorar)
+        let verificationStatus: string | null = null;
+
         if (data.sessionId) {
           try {
-            await planoApi.verifySession(data.sessionId);
-          } catch {
-            // ignora erros de verificação (pode falhar se o webhook ainda não tiver processado, por exemplo)
+            const verification = await planoApi.verifySession(data.sessionId);
+            verificationStatus = verification.status ?? verification.plano ?? null;
+
+            if (verification.sucesso) {
+              posthog.capture("subscription_checkout_completed", {
+                source: "upgrade_screen",
+                verification_status: verificationStatus,
+                browser_result: result.type,
+              });
+            }
+          } catch (error) {
+            posthog.captureException(error as Error, {
+              context: "subscription_verification",
+            });
           }
         }
         loadPlan();
       }
     } catch (err: any) {
+      posthog.captureException(err as Error, {
+        context: "subscription_checkout",
+      });
       Alert.alert("Erro", err?.message || "Não foi possível iniciar o pagamento. Tenta mais tarde.");
     } finally {
       setCheckoutLoading(false);

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -9,12 +8,15 @@ import {
   ActivityIndicator,
   Pressable,
   AppState,
+  Animated,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../styles/theme";
+import { Text, Card } from "../../components/ui";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { workoutApi, metricsApi, planoApi } from "../../services/api";
 
@@ -37,6 +39,7 @@ export default function WorkoutActive() {
   const { safeTop } = useAndroidInsets();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(true);
   const [workout, setWorkout] = useState<any>(null);
   const [exercicios, setExercicios] = useState<ExercicioAtivo[]>([]);
@@ -194,6 +197,12 @@ export default function WorkoutActive() {
         };
       });
       
+      // Track workout started
+      posthog.capture("workout_started", {
+        workout_id: Number(id),
+        workout_name: currentWorkout?.nome || "Desconhecido",
+      });
+
       setExercicios(exerciciosAtivos);
     } catch (error) {
       console.error("Erro ao carregar treino:", error);
@@ -382,10 +391,7 @@ export default function WorkoutActive() {
             const sessionResult = await workoutApi.saveSession(user!.id, Number(id), tempoDecorrido, todasAsSeries);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            if (tickRef.current) clearInterval(tickRef.current);
-            if (restTimerRef.current) clearInterval(restTimerRef.current);
-
-            // Calcular volume total e navegar para feedback
+            // Calcular volume total
             const volume = todasAsSeries.reduce((acc, s) => acc + s.peso * s.repeticoes, 0);
             const exerciciosPayload = exercicios
               .map((ex) => ({
@@ -396,6 +402,20 @@ export default function WorkoutActive() {
               }))
               .filter((ex) => ex.series.length > 0);
 
+            // Track workout completed
+            posthog.capture("workout_completed", {
+              workout_id: Number(id),
+              workout_nome: workout?.nome || "Treino",
+              duracao_segundos: tempoDecorrido,
+              total_series: todasAsSeries.length,
+              volume_total: Math.round(volume),
+              exercicios_count: exerciciosPayload.length,
+            });
+
+            if (tickRef.current) clearInterval(tickRef.current);
+            if (restTimerRef.current) clearInterval(restTimerRef.current);
+
+            // Navegar para feedback
             router.replace({
               pathname: "/workout/feedback",
               params: {

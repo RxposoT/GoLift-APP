@@ -10,6 +10,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { usePostHog } from "posthog-react-native";
 import { useTheme } from "../../styles/theme";
 import { useCommunities } from "../../contexts/CommunitiesContext";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
@@ -18,6 +19,7 @@ export default function WorkoutSummary() {
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
   const params = useLocalSearchParams();
+  const posthog = usePostHog();
   const { userCommunities, sendMessage } = useCommunities();
 
   const nome = (params.nome as string) ?? "Treino";
@@ -54,14 +56,26 @@ export default function WorkoutSummary() {
         duracao,
         exercicios: exerciciosData,
       });
-      await sendMessage(community.id, `\u{1F3CB}\uFE0F__SHARE__${payload}`);
+      await sendMessage(community.id, `🏋️__SHARE__${payload}`);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Track workout shared
+      posthog.capture("workout_shared", {
+        workout_nome: nome,
+        duracao_segundos: duracao,
+        total_series: totalSeries,
+        volume_total: volume,
+        exercicios_count: exerciciosData.length,
+        community_id: community.id,
+      });
+
       setShowShare(false);
+      setSharing(false);
       router.replace("/");
     } catch {
+      setSharing(false);
       setShowShare(false);
       router.replace("/");
-      setSharing(false);
     }
   }
 

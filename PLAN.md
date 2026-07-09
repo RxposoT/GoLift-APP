@@ -12,19 +12,19 @@
 |------|---|-------------|--------|
 | Auth & Onboarding | 100% | Concluído | `main` |
 | Timer Treino Ativo | 100% | Concluído | `main` |
-| **Exercícios Treino Ativo** | **100%** | **Concluído** | `main` |
-| Biblioteca Treinos CRUD | 95% | Concluído | `main` |
-| Métricas & Progresso | 92% | Concluído | `main` |
-| Plano IA (Wizard) | 95% | Concluído | `main` |
-| Relatório IA | 90% | Concluído | `main` |
-| Comunidades (Chat RealTime) | 90% | Concluído | `main` |
-| Perfil & Gamificação | 95% | Concluído | `main` |
+| Exercícios Treino Ativo | 100% | Concluído | `main` |
+| Biblioteca Treinos CRUD | 100% | Concluído | `main` |
+| Métricas & Progresso | 100% | Concluído | `main` |
+| Plano IA (Wizard) | 100% | Concluído | `main` |
+| Relatório IA | 100% | Concluído | `main` |
+| Comunidades (Chat RealTime) | 100% | Concluído | `main` |
+| Perfil & Gamificação | 100% | Concluído | `main` |
 | Sincronização Peso (Backend) | 100% | Concluído | `main` |
-| UI/UX Polish (Skeletons, Animações) | 95% | Concluído | `main` |
-| Notificações Push (Expo + Edge Functions) | **100%** | **Concluído** | `main` |
-| Testes (Unit + API Mock) | **80%** | **Concluído** | `main` |
-| CI/CD (GitHub Actions + EAS) | **100%** | **Concluído** | `main` |
-| Offline-First (Cache + Sync) | **100%** | **Concluído** | `main` |
+| UI/UX Polish (Skeletons, Animações) | 100% | Concluído | `main` |
+| Notificações Push (Expo + Edge Functions) | 100% | Concluído | `main` |
+| Testes (Unit + API Mock) | 90% | Concluído | `main` |
+| CI/CD (GitHub Actions + EAS) | 100% | Concluído | `main` |
+| Offline-First (Cache + Sync) | 100% | Concluído | `main` |
 
 ---
 

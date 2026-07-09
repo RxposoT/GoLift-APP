@@ -58,7 +58,7 @@ export const planoApi = {
   createCheckoutSession: (userId: string) =>
     backendRequest<{ sucesso: boolean; url: string; sessionId: string }>(
       "/api/stripe/checkout-session",
-      { method: "POST", body: {}, timeout: 15000 }
+      { method: "POST", body: { userId }, timeout: 15000 }
     ),
 
   getReport: (userId: string) =>
@@ -145,7 +145,7 @@ export const planoApi = {
   },
 
   createStripePortal: (userId: string) =>
-    backendRequest<{ url: string }>("/api/stripe/portal", { method: "POST" }),
+    backendRequest<{ url: string }>("/api/stripe/portal", { method: "POST", body: { userId } }),
 
   verifySession: (sessionId: string) =>
     backendRequest<{ sucesso: boolean; plano?: string; status?: string }>(

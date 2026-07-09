@@ -5,6 +5,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
@@ -31,6 +32,7 @@ export default function WorkoutFeedback() {
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
   const { user } = useAuth();
+  const posthog = usePostHog();
   const params = useLocalSearchParams();
 
   const sessionId = Number(params.session_id);
@@ -83,6 +85,18 @@ export default function WorkoutFeedback() {
       setAiResponse(data);
       setSubmitted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Track workout feedback submitted
+      posthog.capture("workout_feedback_submitted", {
+        session_id: sessionId,
+        workout_nome: nome,
+        sentir_score: sentirScore,
+        energia_treino: energiaTreino,
+        dor_zones_count: dorZones?.length || 0,
+        dor_intensidade: dorIntensidade,
+        is_premium: isPremium,
+        has_ai_response: !!data?.mensagem,
+      });
     } catch (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {

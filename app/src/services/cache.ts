@@ -51,7 +51,7 @@ export const cache = {
     return this.fetchAndCache(key, fetcher, ttlMs);
   },
 
-  private static async fetchAndCache<T>(
+  async fetchAndCache<T>(
     key: string,
     fetcher: () => Promise<T>,
     ttlMs: number

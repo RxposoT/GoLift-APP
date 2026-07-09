@@ -28,7 +28,7 @@ export const authApi = {
     objetivo?: string;
     pesoAlvo?: number;
   }) => {
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -44,16 +44,18 @@ export const authApi = {
     });
     if (error) throw new Error(error.message);
 
-    // Update profile with extra data
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from("profiles").update({
+    // After signUp, the user is available in the response even if email confirmation is enabled.
+    // Fall back to getUser() for already-confirmed flows.
+    const userToUpdate = signUpData?.user || (await supabase.auth.getUser()).data?.user;
+    if (userToUpdate) {
+      await supabase.from("profiles").upsert({
+        id: userToUpdate.id,
         idade: data.idade,
         peso: data.peso,
         altura: data.altura,
         objetivo: data.objetivo,
         peso_alvo: data.pesoAlvo,
-      }).eq("id", user.id);
+      });
     }
 
     return { sucesso: true, message: "Conta criada com sucesso!" };

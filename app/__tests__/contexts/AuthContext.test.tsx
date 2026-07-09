@@ -34,7 +34,7 @@ const { authApi } = jest.requireMock("../../src/services/api");
 
 describe("AuthContext", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     supabase.auth.getSession.mockResolvedValue({
       data: { session: null },
       error: null,
@@ -42,12 +42,12 @@ describe("AuthContext", () => {
     supabase.auth.onAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: jest.fn() } },
     });
+    // Default: login succeeds (register() internally calls login())
+    authApi.login.mockResolvedValue({ sucesso: true, user: { id: "1", nome: "Test User", email: "test@test.com", tipo: 0 } });
   });
 
   it("renders children and provides default unauthenticated state", async () => {
-    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
-    expect(result.current.isLoading).toBe(true);
-
+    const { result } = await renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.isAuthenticated).toBe(false);
@@ -63,7 +63,7 @@ describe("AuthContext", () => {
     };
     authApi.login.mockResolvedValue({ sucesso: true, user: fakeUser });
 
-    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    const { result } = await renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
@@ -78,7 +78,7 @@ describe("AuthContext", () => {
   it("login throws on invalid credentials", async () => {
     authApi.login.mockRejectedValue(new Error("Credenciais inválidas"));
 
-    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    const { result } = await renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     await act(async () => {
@@ -103,7 +103,7 @@ describe("AuthContext", () => {
       error: null,
     });
 
-    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    const { result } = await renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.isAuthenticated).toBe(true);
 
@@ -121,7 +121,7 @@ describe("AuthContext", () => {
   it("register calls authApi.register with correct data", async () => {
     authApi.register.mockResolvedValue({ sucesso: true });
 
-    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    const { result } = await renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     const registerData = {
@@ -151,7 +151,7 @@ describe("AuthContext", () => {
       error: null,
     });
 
-    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+    const { result } = await renderHook(() => useAuth(), { wrapper: AuthProvider });
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });

@@ -24,8 +24,8 @@ async function createCheckoutSession(userId) {
       line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
       metadata: { userId },              // Guarda userId para o webhook processar depois
       customer_email: profile?.email,    // Pré-preenche o email no checkout
-      success_url: `${SERVER_URL}/payment-return?status=sucesso`,
-      cancel_url: `${SERVER_URL}/payment-return?status=cancelado`,
+      success_url: `${SERVER_URL}/api/stripe/payment-return?status=sucesso`,
+      cancel_url: `${SERVER_URL}/api/stripe/payment-return?status=cancelado`,
     });
     return { sucesso: true, url: session.url, sessionId: session.id };
   } catch (err) {

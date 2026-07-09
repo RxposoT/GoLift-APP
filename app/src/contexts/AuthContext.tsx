@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { router } from "expo-router";
+import { usePostHog } from "posthog-react-native";
 import { supabase } from "../lib/supabase";
 import { authApi } from "../services/api";
 import { User } from "../types";
@@ -27,17 +28,29 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const posthog = usePostHog();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUser({
+        const restoredUser = {
           id: session.user.id,
           nome: session.user.user_metadata?.nome || session.user.email || "",
           email: session.user.email || "",
           tipo: session.user.user_metadata?.tipo || 0,
+        };
+        setUser(restoredUser);
+        posthog.identify(session.user.id, {
+          $set: {
+            email: session.user.email || "",
+            nome: restoredUser.nome,
+            tipo: restoredUser.tipo,
+          },
+          $set_once: {
+            first_login_at: new Date().toISOString(),
+          },
         });
       }
       setIsLoading(false);
@@ -45,11 +58,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUser({
+        const nextUser = {
           id: session.user.id,
           nome: session.user.user_metadata?.nome || session.user.email || "",
           email: session.user.email || "",
           tipo: session.user.user_metadata?.tipo || 0,
+        };
+        setUser(nextUser);
+        posthog.identify(session.user.id, {
+          $set: {
+            email: session.user.email || "",
+            nome: nextUser.nome,
+            tipo: nextUser.tipo,
+          },
         });
       } else {
         setUser(null);
@@ -57,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [posthog]);
 
   async function login(email: string, password: string) {
     try {
@@ -71,6 +92,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           tipo: response.user.tipo,
         };
         setUser(userData);
+        posthog.identify(userData.id, {
+          $set: {
+            email: userData.email,
+            nome: userData.nome,
+            tipo: userData.tipo,
+          },
+          $set_once: {
+            first_login_at: new Date().toISOString(),
+          },
+        });
+        posthog.capture("user_logged_in", {
+          login_method: "email",
+          user_type: userData.tipo,
+        });
         router.replace("/(tabs)");
       } else {
         throw new Error("Erro ao iniciar sessão");
@@ -85,6 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.register(data);
 
       if (response.sucesso) {
+        posthog.capture("user_registered", {
+          signup_method: "email",
+          objective: data.objetivo ?? null,
+          has_target_weight: Boolean(data.pesoAlvo),
+        });
         await login(data.email, data.password);
       } else {
         throw new Error(response.message || "Erro ao registar");
@@ -97,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout() {
     try {
       await supabase.auth.signOut();
+      posthog.reset();
       setUser(null);
       router.replace("/login");
     } catch (error) {

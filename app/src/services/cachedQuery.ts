@@ -1,5 +1,5 @@
-import { cache } from "../cache";
-import { supabase } from "../../lib/supabase";
+import { cache } from "./cache";
+import { supabase } from "../lib/supabase";
 
 type QueryOptions = {
   from: string;
@@ -22,9 +22,9 @@ export const cachedQuery = {
     return cache.withCache<T[]>(
       key,
       async () => {
-        let query = supabase.from(opts.from).select(opts.select);
+        let query: any = supabase.from(opts.from).select(opts.select);
         if (opts.eq) query = query.eq(opts.eq[0], opts.eq[1]);
-        if (opts.order) query = query.order(opts.order[0], opts.order);
+        if (opts.order) query = query.order(opts.order[0], opts.order[1]);
         const { data, error } = await query;
         if (error) throw error;
         return (data || []) as T[];
@@ -34,11 +34,11 @@ export const cachedQuery = {
   },
 
   async fetchSingle<T>(opts: QueryOptions, ttlMs = 5 * 60_000): Promise<T | null> {
-    const key = API_CACHE_PREFIX + `single:${cacheKey(opts)}`;
+    const key = `single:${cacheKey(opts)}`;
     return cache.withCache<T | null>(
       key,
       async () => {
-        let query = supabase.from(opts.from).select(opts.select).maybeSingle();
+        let query: any = supabase.from(opts.from).select(opts.select).maybeSingle();
         if (opts.eq) query = query.eq(opts.eq[0], opts.eq[1]);
         const { data, error } = await query;
         if (error) throw error;
