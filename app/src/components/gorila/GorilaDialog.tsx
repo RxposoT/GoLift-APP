@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useGorila } from './GorilaContext'
 import { useTheme } from '../../contexts/ThemeContext'
+import { GORILA_ANIMATIONS } from './gorilaAnimations'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 const GORILA_SIZE = 120
@@ -83,7 +84,7 @@ export default function GorilaDialog() {
 
   if (!isVisible || !message) return null
 
-  const sheetTotalHeight = GORILA_DENTRO + 8 + contentHeight + insets.bottom + 16
+  const expressao = GORILA_ANIMATIONS[message.estado]
 
   return (
     <Animated.View
@@ -108,7 +109,13 @@ export default function GorilaDialog() {
           source={require('../../../assets/images/Gorila.png')}
           style={[
             styles.gorilaImagem,
-            { transform: [{ translateY: gorilaBounceInterp }] },
+            {
+              transform: [
+                { translateY: Animated.add(gorilaBounceInterp, expressao.translateY) },
+                { rotate: expressao.rotate },
+                { scale: expressao.scale },
+              ],
+            },
           ]}
           resizeMode="contain"
         />
@@ -127,12 +134,13 @@ export default function GorilaDialog() {
           </View>
 
           {message.acoes && message.acoes.length > 0 && (
-            <View style={styles.acoes}>
+            <View style={[styles.acoes, message.presentation === 'choices' && styles.escolhas]}>
               {message.acoes.map((acao, index) => (
                 <TouchableOpacity
                   key={index}
                   style={[
                     styles.botao,
+                    message.presentation === 'choices' && styles.botaoEscolha,
                     acao.primary
                       ? { backgroundColor: theme.primary }
                       : { backgroundColor: theme.backgroundTertiary },
@@ -216,11 +224,18 @@ const styles = StyleSheet.create({
     gap: 10,
     width: '100%',
   },
+  escolhas: {
+    flexDirection: 'column',
+  },
   botao: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
+  },
+  botaoEscolha: {
+    flex: 0,
+    width: '100%',
   },
   botaoTexto: {
     fontSize: 15,

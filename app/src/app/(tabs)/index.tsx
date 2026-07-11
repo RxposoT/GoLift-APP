@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   ScrollView,
@@ -20,6 +20,7 @@ import { generateStreakWeek } from "../../utils/streak";
 import StreakBar from "../../components/StreakBar";
 import { supabase } from "../../lib/supabase";
 import { useGorila } from "../../components/gorila/GorilaContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { spacing, radius } from "../../styles/tokens";
 import { STREAK_ORANGE, MODAL_BACKDROP } from "../../styles/colors";
 
@@ -41,7 +42,7 @@ export default function Home() {
   });
   const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
   const [dailyPhrase, setDailyPhrase] = useState<string | null>(null);
-  const [precisaCheckin, setPrecisaCheckin] = useState(false);
+  const dailyCheckinRef = useRef({ sonoHoras: 7, sonoQualidade: 3, energia: 3, stress: 3 });
 
   useEffect(() => {
     if (user?.id) {
@@ -49,14 +50,6 @@ export default function Home() {
     }
     planoApi.getDailyPhrase().then(d => setDailyPhrase(d.frase)).catch(() => {});
   }, [user]);
-
-  useEffect(() => {
-    if (!gorila || !user) return;
-    const timer = setTimeout(() => {
-      gorila.say('Bom dia! Pronto para mais um treino? Vamos nisso! 💪', 'greeting')
-    }, 800)
-    return () => clearTimeout(timer)
-  }, [user])
 
   async function loadData() {
     try {
@@ -67,9 +60,9 @@ export default function Home() {
         metricsApi.getStats(user!.id).catch(() => null),
         metricsApi.getStreak(user!.id).catch(() => null),
       ]);
-      const hoje = new Date().toISOString().split("T")[0];
+      const hoje = getTodayKey();
       const { data: checkinHoje } = await supabase.from("daily_readiness").select("id").eq("user_id", user!.id).eq("data", hoje).maybeSingle();
-      setPrecisaCheckin(!checkinHoje);
+      await mostrarGorilaDoDia(Boolean(checkinHoje));
       if (profile) { setXP(profile.xp ?? 0); setNivel(profile.nivel ?? 1); }
       const historyItems: any[] = await metricsApi.getHistory(user!.id).catch(() => []);
       const recentSessions = [...historyItems].filter((s: any) => s.id_treino && (s.data_fim || s.data_inicio || s.data))
@@ -90,6 +83,98 @@ export default function Home() {
   }
 
   async function onRefresh() { setRefreshing(true); await loadData(); setRefreshing(false); }
+
+  function getTodayKey() {
+    const agora = new Date();
+    return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
+  }
+
+  async function mostrarGorilaDoDia(checkinConcluido: boolean) {
+    if (!user?.id) return;
+    const hoje = getTodayKey();
+    const chave = `@golift:gorila:abertura:${user.id}`;
+    const ultimaAbertura = await AsyncStorage.getItem(chave).catch(() => null);
+    if (ultimaAbertura === hoje) return;
+
+    // Marcar antes de abrir evita que o gorila reapareça ao navegar ou reabrir a app.
+    await AsyncStorage.setItem(chave, hoje).catch(() => {});
+    setTimeout(() => {
+      if (checkinConcluido) {
+        gorila.say(`${getGreeting()}! O teu diagnóstico de hoje já está registado.`, 'greeting');
+      } else {
+        iniciarDiagnosticoDiario();
+      }
+    }, 700);
+  }
+
+  function iniciarDiagnosticoDiario() {
+    dailyCheckinRef.current = { sonoHoras: 7, sonoQualidade: 3, energia: 3, stress: 3 };
+    perguntarSono();
+  }
+
+  function perguntarSono() {
+    gorila.show({
+      estado: 'greeting', texto: `${getGreeting()}! Antes do treino, como dormiste?`, presentation: 'choices',
+      acoes: [
+        { label: 'Menos de 5 horas', onPress: () => { dailyCheckinRef.current.sonoHoras = 3; perguntarQualidadeSono(); } },
+        { label: 'Entre 5 e 6 horas', onPress: () => { dailyCheckinRef.current.sonoHoras = 5; perguntarQualidadeSono(); } },
+        { label: 'Entre 7 e 8 horas', primary: true, onPress: () => { dailyCheckinRef.current.sonoHoras = 7; perguntarQualidadeSono(); } },
+        { label: 'Mais de 8 horas', onPress: () => { dailyCheckinRef.current.sonoHoras = 9; perguntarQualidadeSono(); } },
+      ],
+    });
+  }
+
+  function perguntarQualidadeSono() {
+    gorila.show({
+      estado: 'talking', texto: 'E a qualidade do sono?', presentation: 'choices',
+      acoes: [1, 2, 3, 4, 5].map((valor) => ({
+        label: valor === 1 ? 'Péssima' : valor === 5 ? 'Excelente' : `${valor} de 5`, primary: valor === 3,
+        onPress: () => { dailyCheckinRef.current.sonoQualidade = valor; perguntarEnergia(); },
+      })),
+    });
+  }
+
+  function perguntarEnergia() {
+    gorila.show({
+      estado: 'talking', texto: 'Quanta energia tens neste momento?', presentation: 'choices',
+      acoes: [1, 2, 3, 4, 5].map((valor) => ({
+        label: valor === 1 ? 'Muito pouca' : valor === 5 ? 'Muita energia' : `${valor} de 5`, primary: valor === 3,
+        onPress: () => { dailyCheckinRef.current.energia = valor; perguntarStress(); },
+      })),
+    });
+  }
+
+  function perguntarStress() {
+    gorila.show({
+      estado: 'concerned', texto: 'E o stress hoje?', presentation: 'choices',
+      acoes: [1, 2, 3, 4, 5].map((valor) => ({
+        label: valor === 1 ? 'Estou calmo' : valor === 5 ? 'Muito elevado' : `${valor} de 5`, primary: valor === 3,
+        onPress: () => { dailyCheckinRef.current.stress = valor; guardarDiagnosticoDiario(); },
+      })),
+    });
+  }
+
+  async function guardarDiagnosticoDiario() {
+    if (!user?.id) return;
+    const { sonoHoras, sonoQualidade, energia, stress } = dailyCheckinRef.current;
+    const score = Math.round(sonoQualidade * 2 + energia * 2 + Math.min((sonoHoras / 8) * 2, 2) + (6 - stress) * 2);
+    const prontidao = Math.max(1, Math.min(score, 10));
+    const { error } = await supabase.from("daily_readiness").upsert({
+      user_id: user.id, data: getTodayKey(), sono_horas: sonoHoras, sono_qualidade: sonoQualidade,
+      energia, stress, musculo_dolorido: [], prontidao_score: prontidao,
+    }, { onConflict: "user_id,data" });
+
+    if (error) {
+      gorila.say('Não consegui guardar o diagnóstico. Tenta novamente mais tarde.', 'concerned');
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    gorila.show({
+      estado: prontidao >= 7 ? 'celebrating' : prontidao <= 4 ? 'sad' : 'talking',
+      texto: prontidao >= 7 ? `Boa base para hoje. Diagnóstico: ${prontidao}/10.` : `Registei ${prontidao}/10. Ajusta o ritmo ao teu corpo.`,
+      autoFechar: 4500,
+    });
+  }
 
   async function handleStartWorkout(workout: any) {
     Alert.alert("Começar Treino", `Deseja começar: ${workout.nome || workout.name || "Treino"}?`, [
@@ -143,32 +228,6 @@ export default function Home() {
           </View>
         </View>
 
-        {/* ── CHECK-IN PROMPT ── */}
-        {precisaCheckin ? (
-          <TouchableOpacity
-            onPress={() => router.push("/checkin")}
-            style={{ marginHorizontal: 20, marginBottom: spacing.lg, backgroundColor: theme.accent + "15", borderRadius: 18, padding: spacing.lg, flexDirection: "row", alignItems: "center", gap: spacing.md }}
-            activeOpacity={0.7}
-          >
-            <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: theme.accent + "25", justifyContent: "center", alignItems: "center" }}>
-              <Ionicons name="moon" size={20} color={theme.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="headline">Check-in Diário</Text>
-              <Text variant="subhead" color="textSecondary">Como dormiste? Conta-me como te sentes hoje</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.accent} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => {}}
-            style={{ marginHorizontal: 20, marginBottom: spacing.lg, backgroundColor: theme.accentGreen + "12", borderRadius: 18, padding: 14, flexDirection: "row", alignItems: "center", gap: 10 }}
-          >
-            <Ionicons name="checkmark-circle" size={20} color={theme.accentGreen} />
-            <Text variant="subhead" style={{ color: theme.accentGreen }}>Check-in de hoje feito</Text>
-          </TouchableOpacity>
-        )}
-
         {/* ── STREAK BAR ── */}
         <StreakBar streak={streak} xp={xp} nivel={nivel} xpProximoNivel={nivel * 100} />
 
@@ -199,10 +258,12 @@ export default function Home() {
         {/* ── FRASE DO DIA ── */}
         {dailyPhrase ? (
           <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.huge }}>
-            <View style={{ backgroundColor: theme.accent + "12", borderRadius: 18, padding: 18, borderLeftWidth: 3, borderLeftColor: theme.accent, flexDirection: "row", alignItems: "flex-start", gap: spacing.md }}>
-              <Ionicons name="sparkles" size={16} color={theme.accent} style={{ marginTop: 2 }} />
-              <Text variant="callout" style={{ flex: 1, fontStyle: "italic" }}>{dailyPhrase}</Text>
+            <Text variant="caption" color="textSecondary" style={{ marginBottom: spacing.sm }}>NOTA DO DIA</Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+              <Text variant="display" style={{ color: theme.accent, lineHeight: 40, marginRight: spacing.sm }}>“</Text>
+              <Text variant="title3" style={{ flex: 1, lineHeight: 27 }}>{dailyPhrase}</Text>
             </View>
+            <View style={{ height: 1, backgroundColor: theme.border, marginTop: spacing.lg, marginLeft: 34 }} />
           </View>
         ) : null}
 
@@ -243,16 +304,21 @@ export default function Home() {
               />
             </Card>
           ) : (
-            <View style={{ gap: 10 }}>
+            <View>
               {recentWorkouts.map((workout, index) => (
                 <TouchableOpacity
                   key={workout.id_sessao || workout.id_treino || index}
                   onPress={() => handleStartWorkout(workout)}
-                  style={{ backgroundColor: theme.backgroundSecondary, borderRadius: 18, overflow: "hidden", flexDirection: "row" }}
+                  style={{ flexDirection: "row", alignItems: "stretch", paddingVertical: spacing.md, borderBottomWidth: index === recentWorkouts.length - 1 ? 0 : 1, borderBottomColor: theme.border }}
                   activeOpacity={0.7}
                 >
-                  <View style={{ width: 4, backgroundColor: theme.accent }} />
-                  <View style={{ flex: 1, padding: 18, flexDirection: "row", alignItems: "center" }}>
+                  <View style={{ width: 42, alignItems: "center", paddingTop: 2 }}>
+                    <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: index === 0 ? theme.accent : theme.backgroundSecondary, justifyContent: "center", alignItems: "center" }}>
+                      <Ionicons name={index === 0 ? "barbell" : "time-outline"} size={16} color={index === 0 ? "#fff" : theme.textSecondary} />
+                    </View>
+                    {index !== recentWorkouts.length - 1 && <View style={{ width: 1, flex: 1, minHeight: 18, marginTop: 6, backgroundColor: theme.border }} />}
+                  </View>
+                  <View style={{ flex: 1, paddingLeft: spacing.sm, flexDirection: "row", alignItems: "center", minHeight: 54 }}>
                     <View style={{ flex: 1 }}>
                       <Text variant="headline" style={{ marginBottom: spacing.xs }}>
                         {workout.nome || workout.nome_treino || workout.name || "Treino"}
@@ -262,9 +328,7 @@ export default function Home() {
                         {(workout.duracao_segundos || 0) > 0 ? ` · ${formatTime(workout.duracao_segundos)}` : ""}
                       </Text>
                     </View>
-                    <View style={{ backgroundColor: theme.accent, borderRadius: 12, padding: spacing.sm }}>
-                      <Ionicons name="play" size={16} color="#fff" />
-                    </View>
+                    <Ionicons name="arrow-forward" size={18} color={theme.textTertiary} />
                   </View>
                 </TouchableOpacity>
               ))}
