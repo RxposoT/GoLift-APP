@@ -40,9 +40,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
         peso: best.peso || best.weight,
         data: best.data_serie || best.data,
       };
-    })
-    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()) // Sort by most recent
-    .slice(0, 3); // Load only the last 3 records
+    }).sort((a, b) => b.peso - a.peso);
   }, [records]);
 
   async function handleExerciseClick(id_exercicio: number, nome: string) {
@@ -91,8 +89,8 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
       peso,
     }));
 
-    // limit to 7 points for readable chart space
-    const subset = list.slice(-6);
+    // limit to 3 points for readable chart space
+    const subset = list.slice(-3);
 
     const weights = subset.map(s => s.peso);
     const maxWeight = Math.max(...weights, 10);
@@ -285,7 +283,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
                       alignItems: "center",
                       marginBottom: 24,
                     }}>
-                      {chartPoints.points && chartPoints.points.length > 1 ? (
+                      {chartPoints.points && chartPoints.points.length >= 1 ? (
                         <View style={{ width: chartWidth, height: chartHeight }}>
                           <Svg width={chartWidth} height={chartHeight}>
                             {/* Grid Lines */}
@@ -318,14 +316,16 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
                             })}
 
                             {/* Draw continuous line */}
-                            <Path
-                              d={chartPoints.points.reduce((pathStr, p, idx) => {
-                                return idx === 0 ? `M ${p.x} ${p.y}` : `${pathStr} L ${p.x} ${p.y}`;
-                              }, "")}
-                              fill="none"
-                              stroke={theme.accent}
-                              strokeWidth={3}
-                            />
+                            {chartPoints.points.length > 1 && (
+                              <Path
+                                d={chartPoints.points.reduce((pathStr, p, idx) => {
+                                  return idx === 0 ? `M ${p.x} ${p.y}` : `${pathStr} L ${p.x} ${p.y}`;
+                                }, "")}
+                                fill="none"
+                                stroke={theme.accent}
+                                strokeWidth={3}
+                              />
+                            )}
 
                             {/* Circular Markers */}
                             {chartPoints.points.map((p, idx) => (
@@ -365,7 +365,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
                       Histórico de Cargas
                     </Text>
                     <View style={{ gap: 8 }}>
-                      {[...history].reverse().map((h, idx) => (
+                      {[...history].reverse().slice(0, 3).map((h, idx) => (
                         <View
                           key={idx}
                           style={{

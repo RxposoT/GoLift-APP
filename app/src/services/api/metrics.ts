@@ -26,9 +26,7 @@ export const metricsApi = {
 
   getRecords: async (userId: string) => {
     const { data, error } = await supabase
-      .rpc("get_user_records", { p_user_id: userId })
-      .order("data_serie", { ascending: false })
-      .limit(3);
+      .rpc("get_user_records", { p_user_id: userId });
 
     if (error) return [];
     return (data || []).map((r: any) => ({
@@ -40,17 +38,26 @@ export const metricsApi = {
   },
 
   getExerciseHistory: async (userId: string, exercicioId: number) => {
+    // 1. Get the last sessions where this exercise was performed using !inner join
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("workout_sets")
+      .select("session_id, data_serie, session:workout_sessions!inner(user_id)")
+      .eq("exercise_id", exercicioId)
+      .eq("session.user_id", userId)
+      .gt("peso", 0)
+      .order("data_serie", { ascending: false });
+
+    if (sessionError || !sessionData || sessionData.length === 0) return [];
+
+    // Get unique session IDs (up to 3)
+    const uniqueSessionIds = Array.from(new Set(sessionData.map((s: any) => s.session_id))).slice(0, 3);
+
+    // 2. Fetch the sets belonging to those 3 sessions
     const { data, error } = await supabase
       .from("workout_sets")
       .select("peso, repeticoes, data_serie")
       .eq("exercise_id", exercicioId)
-      .gt("peso", 0)
-      .in("session_id", (
-        await supabase
-          .from("workout_sessions")
-          .select("id")
-          .eq("user_id", userId)
-      ).data?.map((s) => s.id) || [])
+      .in("session_id", uniqueSessionIds)
       .order("data_serie");
 
     if (error) return [];

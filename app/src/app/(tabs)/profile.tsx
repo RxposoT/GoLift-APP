@@ -157,40 +157,11 @@ export default function Profile() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [showAllRecords, setShowAllRecords] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [reminderHour, setReminderHour] = useState(18);
-  const [reminderMinute, setReminderMinute] = useState(0);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-
   const heroOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (user?.id) loadData();
   }, [user]);
-
-  useEffect(() => {
-    AsyncStorage.multiGet([
-      "@golift:notifications:enabled",
-      "@golift:notifications:hour",
-      "@golift:notifications:minute",
-    ]).then((entries) => {
-      const map = Object.fromEntries(entries);
-      const enabled = map["@golift:notifications:enabled"] === "true";
-      const hour = map["@golift:notifications:hour"]
-        ? Number(map["@golift:notifications:hour"])
-        : 18;
-      const minute = map["@golift:notifications:minute"]
-        ? Number(map["@golift:notifications:minute"])
-        : 0;
-      setNotificationsEnabled(enabled);
-      setReminderHour(hour);
-      setReminderMinute(minute);
-      if (enabled && user?.id) {
-        registerForPushNotifications(user.id).catch(() => {});
-        scheduleWorkoutReminder(hour, minute).catch(() => {});
-      }
-    }).catch(() => {});
-  }, [user?.id]);
 
   async function loadData() {
     setLoading(true);
@@ -267,37 +238,7 @@ export default function Profile() {
     setRefreshing(false);
   }
 
-  function handleLogout() {
-    Alert.alert("Sair", "Tens a certeza que queres sair?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: logout },
-    ]);
-  }
 
-  async function handleToggleNotifications(enable: boolean) {
-    setNotificationsEnabled(enable);
-    await AsyncStorage.setItem("@golift:notifications:enabled", String(enable)).catch(() => {});
-    if (enable) {
-      if (user?.id) {
-        registerForPushNotifications(user.id).catch(() => {});
-      }
-      scheduleWorkoutReminder(reminderHour, reminderMinute).catch(() => {});
-    } else {
-      cancelAllScheduled().catch(() => {});
-    }
-  }
-
-  async function handleTimeChange(hour: number, minute: number) {
-    setReminderHour(hour);
-    setReminderMinute(minute);
-    await AsyncStorage.multiSet([
-      ["@golift:notifications:hour", String(hour)],
-      ["@golift:notifications:minute", String(minute)],
-    ]).catch(() => {});
-    if (notificationsEnabled) {
-      scheduleWorkoutReminder(hour, minute).catch(() => {});
-    }
-  }
 
   const contextualSubtitle = useMemo(() => {
     const { streak } = streakData;
@@ -352,7 +293,7 @@ export default function Profile() {
             </Pressable>
           )}
           <Pressable
-            onPress={() => router.push("/account")}
+            onPress={() => router.push("/settings")}
             accessibilityRole="button"
             accessibilityLabel="Definições da conta"
             style={({ pressed }) => ({
@@ -636,85 +577,7 @@ export default function Profile() {
           </ScrollView>
         </View>
 
-        {/* Notificacoes */}
-        <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.xxl }}>
-          <SectionHeader title="Notificacoes" />
-          <Card padding={0} style={{ overflow: "hidden" }}>
-            <View style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: spacing.lg,
-              paddingVertical: spacing.lg,
-            }}>
-              <View style={{ flex: 1 }}>
-                <Text variant="headline" color="text">Lembretes de treino</Text>
-                <Text variant="footnote" color="textTertiary" style={{ marginTop: spacing.xxs }}>
-                  Recebe um lembrete diario para treinares
-                </Text>
-              </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={handleToggleNotifications}
-                trackColor={{ false: theme.backgroundTertiary, true: theme.accentGreen }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.backgroundTertiary}
-              />
-            </View>
 
-            {notificationsEnabled && (
-              <>
-                <Pressable
-                  onPress={() => setShowTimePicker(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Alterar hora do lembrete"
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: spacing.lg,
-                    paddingVertical: spacing.md,
-                    borderTopWidth: 1,
-                    borderTopColor: theme.backgroundTertiary,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text variant="callout" color="textSecondary" style={{ flex: 1 }}>Hora do lembrete</Text>
-                  <Text variant="headline" color="text" style={{ fontSize: 18, letterSpacing: 1 }}>
-                    {String(reminderHour).padStart(2, "0")}:{String(reminderMinute).padStart(2, "0")}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={iconSize.xs} color={theme.textTertiary} style={{ marginLeft: spacing.sm }} />
-                </Pressable>
-
-                <View style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingHorizontal: spacing.lg,
-                  paddingVertical: spacing.md,
-                  borderTopWidth: 1,
-                  borderTopColor: theme.backgroundTertiary,
-                  backgroundColor: theme.backgroundTertiary + "30",
-                }}>
-                  <Ionicons name="notifications" size={iconSize.xs} color={theme.textTertiary} style={{ marginRight: spacing.sm }} />
-                  <Text variant="footnote" color="textTertiary" style={{ flex: 1 }}>
-                    Pre-visualizacao: "Hora de treinar!" as {String(reminderHour).padStart(2, "0")}:{String(reminderMinute).padStart(2, "0")}
-                  </Text>
-                </View>
-              </>
-            )}
-          </Card>
-        </View>
-
-
-        <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.sm }}>
-          <Button
-            variant="secondary"
-            size="md"
-            onPress={handleLogout}
-            icon={<Ionicons name="log-out-outline" size={iconSize.sm} color={theme.textSecondary} />}
-            style={{ width: "100%" }}
-          >
-            Terminar Sessão
-          </Button>
-        </View>
 
         <Text variant="caption" color="textTertiary" style={{ textAlign: "center", marginTop: spacing.xl, marginBottom: spacing.sm }}>
           GoLift v1.0.0
@@ -825,84 +688,7 @@ export default function Profile() {
         </Pressable>
       </Modal>
 
-      {/* Time picker modal */}
-      <Modal visible={showTimePicker} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: MODAL_BACKDROP, justifyContent: "flex-end" }}>
-          <Card padding={0} style={{ borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: 40 }}>
-            <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: spacing.md, marginBottom: spacing.xl }} />
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.xxl, paddingBottom: spacing.lg }}>
-              <Text variant="title2" color="text">Hora do Lembrete</Text>
-              <Pressable
-                onPress={() => setShowTimePicker(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Fechar"
-                style={({ pressed }) => ({ backgroundColor: theme.backgroundTertiary, borderRadius: radius.md, padding: spacing.sm, opacity: pressed ? 0.7 : 1 })}
-              >
-                <Ionicons name="close" size={iconSize.sm} color={theme.text} />
-              </Pressable>
-            </View>
 
-            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", paddingVertical: spacing.xl, gap: spacing.xl }}>
-              <View style={{ alignItems: "center" }}>
-                <Text variant="caption" color="textTertiary" style={{ marginBottom: spacing.sm }}>Hora</Text>
-                <Pressable
-                  onPress={() => handleTimeChange((reminderHour + 1) % 24, reminderMinute)}
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
-                >
-                  <Ionicons name="chevron-up" size={radius.xxl} color={theme.text} />
-                </Pressable>
-                <View style={{ backgroundColor: theme.background, borderRadius: radius.lg, paddingHorizontal: radius.xxl, paddingVertical: spacing.lg, marginVertical: spacing.sm }}>
-                  <Text variant="display" style={{ color: theme.text, fontSize: 42 }}>
-                    {String(reminderHour).padStart(2, "0")}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => handleTimeChange(reminderHour === 0 ? 23 : reminderHour - 1, reminderMinute)}
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
-                >
-                  <Ionicons name="chevron-down" size={radius.xxl} color={theme.text} />
-                </Pressable>
-              </View>
-
-              <Text variant="display" style={{ color: theme.text, fontSize: 42, fontWeight: "300", marginBottom: 30 }}>:</Text>
-
-              <View style={{ alignItems: "center" }}>
-                <Text variant="caption" color="textTertiary" style={{ marginBottom: spacing.sm }}>Min</Text>
-                <Pressable
-                  onPress={() => handleTimeChange(reminderHour, (reminderMinute + 5) % 60)}
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
-                >
-                  <Ionicons name="chevron-up" size={radius.xxl} color={theme.text} />
-                </Pressable>
-                <View style={{ backgroundColor: theme.background, borderRadius: radius.lg, paddingHorizontal: radius.xxl, paddingVertical: spacing.lg, marginVertical: spacing.sm }}>
-                  <Text variant="display" style={{ color: theme.text, fontSize: 42 }}>
-                    {String(reminderMinute).padStart(2, "0")}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => handleTimeChange(reminderHour, reminderMinute === 0 ? 55 : reminderMinute - 5)}
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
-                >
-                  <Ionicons name="chevron-down" size={radius.xxl} color={theme.text} />
-                </Pressable>
-              </View>
-            </View>
-
-            <Button
-              variant="primary"
-              size="lg"
-              onPress={() => setShowTimePicker(false)}
-              style={{ marginHorizontal: spacing.xxl, marginTop: spacing.md }}
-            >
-              Confirmar
-            </Button>
-          </Card>
-        </View>
-      </Modal>
     </>
   );
 }

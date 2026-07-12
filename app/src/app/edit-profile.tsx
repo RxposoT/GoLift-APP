@@ -1,14 +1,12 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
-  Text,
-  TextInput,
-  Pressable,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,12 +14,14 @@ import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
 import { userApi } from "../services/api";
+import { Text, Button, Card, Input } from "../components/ui";
 import * as Haptics from "expo-haptics";
+import { spacing, radius as R, iconSize } from "../styles/tokens";
 
 export default function EditProfile() {
   const { user } = useAuth();
   const theme = useTheme();
-  const { safeTop } = useAndroidInsets();
+  const { safeTop, safeBottom } = useAndroidInsets();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -84,7 +84,7 @@ export default function EditProfile() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={theme.text} />
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
@@ -95,16 +95,17 @@ export default function EditProfile() {
       style={{ flex: 1, backgroundColor: theme.background }}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: safeBottom + 40 }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 24, paddingTop: safeTop + 16, paddingBottom: 24 }}>
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Voltar"
             style={({ pressed }) => ({
-              width: 40, height: 40, borderRadius: 14,
+              width: 40, height: 40, borderRadius: R.lg,
               backgroundColor: theme.backgroundSecondary,
               justifyContent: "center", alignItems: "center",
               marginRight: 14, opacity: pressed ? 0.7 : 1,
@@ -112,168 +113,70 @@ export default function EditProfile() {
           >
             <Ionicons name="arrow-back" size={20} color={theme.text} />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: theme.text, flex: 1, letterSpacing: -0.5 }}>
+          <Text variant="title2" style={{ flex: 1, letterSpacing: -0.5 }}>
             Editar Perfil
           </Text>
         </View>
 
-        <View style={{ paddingHorizontal: 24, paddingBottom: 40 }}>
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
-              Nome
-            </Text>
-            <View style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: theme.backgroundSecondary,
-              borderRadius: 14,
-              paddingHorizontal: 16,
-            }}>
-              <Ionicons name="person-outline" size={18} color={theme.textSecondary} />
-              <TextInput
-                style={{
-                  flex: 1,
-                  color: theme.text,
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  fontSize: 16,
-                }}
-                placeholder="O teu nome"
-                placeholderTextColor={theme.textTertiary}
-                value={nome}
-                onChangeText={setNome}
-              />
-            </View>
-          </View>
+        {/* Form Card */}
+        <View style={{ paddingHorizontal: 24 }}>
+          <Card padding={spacing.xl} style={{ marginBottom: 28 }}>
+            <Input
+              leftIcon="person-outline"
+              label="Nome"
+              placeholder="O teu nome"
+              value={nome}
+              onChangeText={setNome}
+              containerStyle={{ marginBottom: spacing.lg }}
+            />
+            <Input
+              leftIcon="calendar-outline"
+              label="Idade"
+              placeholder="Ex: 25"
+              value={idade}
+              onChangeText={setIdade}
+              keyboardType="numeric"
+              containerStyle={{ marginBottom: spacing.lg }}
+            />
+            <Input
+              leftIcon="scale-outline"
+              label="Peso (kg)"
+              placeholder="Ex: 70"
+              value={peso}
+              onChangeText={setPeso}
+              keyboardType="decimal-pad"
+              containerStyle={{ marginBottom: spacing.lg }}
+            />
+            <Input
+              leftIcon="resize-outline"
+              label="Altura (cm)"
+              placeholder="Ex: 175"
+              value={altura}
+              onChangeText={setAltura}
+              keyboardType="decimal-pad"
+              containerStyle={{ marginBottom: spacing.sm }}
+            />
+          </Card>
 
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
-              Idade
-            </Text>
-            <View style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: theme.backgroundSecondary,
-              borderRadius: 14,
-              paddingHorizontal: 16,
-            }}>
-              <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
-              <TextInput
-                style={{
-                  flex: 1,
-                  color: theme.text,
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  fontSize: 16,
-                }}
-                placeholder="Ex: 25"
-                placeholderTextColor={theme.textTertiary}
-                value={idade}
-                onChangeText={setIdade}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
-              Peso (kg)
-            </Text>
-            <View style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: theme.backgroundSecondary,
-              borderRadius: 14,
-              paddingHorizontal: 16,
-            }}>
-              <Ionicons name="scale-outline" size={18} color={theme.textSecondary} />
-              <TextInput
-                style={{
-                  flex: 1,
-                  color: theme.text,
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  fontSize: 16,
-                }}
-                placeholder="Ex: 70"
-                placeholderTextColor={theme.textTertiary}
-                value={peso}
-                onChangeText={setPeso}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
-
-          <View style={{ marginBottom: 32 }}>
-            <Text style={{ color: theme.textSecondary, marginBottom: 8, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
-              Altura (cm)
-            </Text>
-            <View style={{
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: theme.backgroundSecondary,
-              borderRadius: 14,
-              paddingHorizontal: 16,
-            }}>
-              <Ionicons name="resize-outline" size={18} color={theme.textSecondary} />
-              <TextInput
-                style={{
-                  flex: 1,
-                  color: theme.text,
-                  paddingVertical: 14,
-                  paddingHorizontal: 12,
-                  fontSize: 16,
-                }}
-                placeholder="Ex: 175"
-                placeholderTextColor={theme.textTertiary}
-                value={altura}
-                onChangeText={setAltura}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            <Pressable
+          {/* Action buttons */}
+          <View style={{ flexDirection: "row", gap: spacing.md }}>
+            <Button
+              variant="secondary"
+              size="lg"
+              style={{ flex: 1 }}
               onPress={() => router.back()}
-              accessibilityRole="button"
-              accessibilityLabel="Cancelar"
-              style={({ pressed }) => ({
-                flex: 1,
-                backgroundColor: theme.backgroundSecondary,
-                paddingVertical: 16,
-                borderRadius: 14,
-                alignItems: "center",
-                opacity: pressed ? 0.7 : 1,
-              })}
             >
-              <Text style={{ color: theme.text, fontWeight: "600" }}>
-                Cancelar
-              </Text>
-            </Pressable>
-
-            <Pressable
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              style={{ flex: 2 }}
+              loading={saving}
               onPress={handleSave}
-              disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel="Guardar alterações"
-              style={({ pressed }) => ({
-                flex: 1,
-                backgroundColor: theme.accent,
-                paddingVertical: 16,
-                borderRadius: 14,
-                alignItems: "center",
-                opacity: pressed || saving ? 0.8 : 1,
-              })}
             >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: "#fff", fontWeight: "700" }}>
-                  Guardar
-                </Text>
-              )}
-            </Pressable>
+              Guardar
+            </Button>
           </View>
         </View>
       </ScrollView>

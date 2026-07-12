@@ -20,7 +20,7 @@ export default function AdminLayout() {
       .then(({ data }) => {
         const admin = data?.tipo === 1;
         setIsAdmin(admin);
-        if (!admin) router.replace("/account");
+        if (!admin) router.replace("/");
       });
   }, [user, isLoading]);
 
