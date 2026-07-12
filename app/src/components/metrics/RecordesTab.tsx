@@ -128,56 +128,60 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
           {exercisesGrouped.map((ex, idx) => {
             const medalColor = MEDAL_COLORS[idx] ?? theme.textSecondary;
             return (
-              <Card
+              <Pressable
                 key={ex.nome}
                 onPress={() => handleExerciseClick(ex.id_exercicio, ex.nome)}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 16,
-                  borderWidth: 2,
-                  borderColor: theme.backgroundTertiary,
-                }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
               >
-                {/* Achievement Badge */}
-                <View style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  backgroundColor: idx < 3 ? medalColor + "18" : theme.backgroundTertiary,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  marginRight: 16,
-                }}>
-                  <Ionicons
-                    name={idx < 3 ? "trophy" : "medal-outline"}
-                    size={22}
-                    color={idx < 3 ? medalColor : theme.textSecondary}
-                  />
-                </View>
+                <Card
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 16,
+                    borderWidth: 2,
+                    borderColor: theme.backgroundTertiary,
+                  }}
+                >
+                  {/* Achievement Badge */}
+                  <View style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    backgroundColor: idx < 3 ? medalColor + "18" : theme.backgroundTertiary,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 16,
+                  }}>
+                    <Ionicons
+                      name={idx < 3 ? "trophy" : "medal-outline"}
+                      size={22}
+                      color={idx < 3 ? medalColor : theme.textSecondary}
+                    />
+                  </View>
 
-                {/* Ex info */}
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}>
-                    {ex.nome}
-                  </Text>
-                  {ex.data && (
-                    <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
-                      Superado a {formatDate(ex.data)}
+                  {/* Ex info */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.text, fontWeight: "700", fontSize: 15 }}>
+                      {ex.nome}
                     </Text>
-                  )}
-                </View>
+                    {ex.data && (
+                      <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
+                        Superado a {formatDate(ex.data)}
+                      </Text>
+                    )}
+                  </View>
 
-                {/* Record display */}
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={{ color: theme.accent, fontSize: 18, fontWeight: "800", letterSpacing: -0.5 }}>
-                    {ex.peso} kg
-                  </Text>
-                  <Text style={{ color: theme.textTertiary, fontSize: 10, marginTop: 2, fontWeight: "600" }}>
-                    RECORD
-                  </Text>
-                </View>
-              </Card>
+                  {/* Record display */}
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={{ color: theme.accent, fontSize: 18, fontWeight: "800", letterSpacing: -0.5 }}>
+                      {ex.peso} kg
+                    </Text>
+                    <Text style={{ color: theme.textTertiary, fontSize: 10, marginTop: 2, fontWeight: "600" }}>
+                      RECORD
+                    </Text>
+                  </View>
+                </Card>
+              </Pressable>
             );
           })}
         </View>
