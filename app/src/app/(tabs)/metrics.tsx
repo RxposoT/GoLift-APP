@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import {
   View,
   ScrollView,
@@ -83,12 +83,14 @@ export default function Metrics() {
     })
   ).current;
 
-  useEffect(() => {
-    if (user?.id) {
-      loadData();
-      loadGoalSettings();
-    }
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        loadData();
+        loadGoalSettings();
+      }
+    }, [user?.id])
+  );
 
   function getCurrentWeekKey() {
     const now = new Date();
@@ -230,13 +232,13 @@ export default function Metrics() {
       const profile = profileData?.user || profileData;
       if (profile) {
         setProfile({
-          peso: profile.weight,
-          altura: profile.height,
-          idade: profile.age,
-          pesoAlvo: profile.pesoAlvo,
+          peso: profile.peso,
+          altura: profile.altura,
+          idade: profile.idade,
+          pesoAlvo: profile.peso_alvo,
           objetivo: profile.objetivo,
         });
-        await loadWeightHistory(profile.weight);
+        await loadWeightHistory(profile.peso);
       }
       
       const historyItems = historyData || [];
