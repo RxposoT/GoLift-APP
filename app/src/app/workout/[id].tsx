@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import {
   View,
   ScrollView,
@@ -9,7 +9,9 @@ import {
   Pressable,
   AppState,
   Animated,
+  Easing,
 } from "react-native";
+import Svg, { Circle } from "react-native-svg";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -19,6 +21,8 @@ import { useTheme } from "../../styles/theme";
 import { Text, Card } from "../../components/ui";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { workoutApi, metricsApi, planoApi } from "../../services/api";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface Serie {
   numero: number;
@@ -34,34 +38,249 @@ interface ExercicioAtivo {
   previousSeries?: Serie[]; // Dados do treino anterior
 }
 
+// ─────────────────────────────────────────────────────────────
+// Linha de série — isolada num componente próprio para que o
+// estado de foco de cada input não obrigue a re-renderizar a
+// lista inteira de exercícios a cada toque de tecla.
+// ─────────────────────────────────────────────────────────────
+interface SerieRowProps {
+  serie: Serie;
+  index: number;
+  exercicioNome: string;
+  prevPeso: string;
+  prevReps: string;
+  hasPrevious: boolean;
+  theme: any;
+  onChangeValor: (campo: "peso" | "repeticoes", valor: string) => void;
+  onToggleConcluida: () => void;
+}
+
+const SerieRow = memo(function SerieRow({
+  serie,
+  index,
+  exercicioNome,
+  prevPeso,
+  prevReps,
+  hasPrevious,
+  theme,
+  onChangeValor,
+  onToggleConcluida,
+}: SerieRowProps) {
+  const [focusedPeso, setFocusedPeso] = useState(false);
+  const [focusedReps, setFocusedReps] = useState(false);
+  const checkScale = useRef(new Animated.Value(1)).current;
+
+  function handleTogglePress() {
+    Animated.sequence([
+      Animated.timing(checkScale, {
+        toValue: 1.2,
+        duration: 90,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.spring(checkScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    onToggleConcluida();
+  }
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: theme.background,
+        borderRadius: 12,
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+      }}
+    >
+      {/* Número da série */}
+      <View style={{ width: 44, alignItems: "center" }}>
+        <Text style={{ color: theme.textTertiary, fontSize: 14, fontWeight: "600" }}>
+          {serie.numero || index + 1}
+        </Text>
+      </View>
+
+      {/* Peso */}
+      <View style={{ flex: 1, paddingRight: 6 }}>
+        <TextInput
+          style={{
+            backgroundColor: theme.backgroundTertiary,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            color: theme.text,
+            fontSize: 15,
+            fontWeight: "600",
+            textAlign: "center",
+            borderWidth: 1.5,
+            borderColor: focusedPeso ? theme.accent : "transparent",
+          }}
+          placeholder={prevPeso}
+          placeholderTextColor={theme.textTertiary}
+          keyboardType="decimal-pad"
+          value={serie.peso}
+          onChangeText={(val) => onChangeValor("peso", val)}
+          onFocus={() => setFocusedPeso(true)}
+          onBlur={() => setFocusedPeso(false)}
+          accessibilityLabel={`Peso para série ${index + 1} de ${exercicioNome}`}
+        />
+        {hasPrevious && !serie.peso && (
+          <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
+            ↑{prevPeso}kg
+          </Text>
+        )}
+      </View>
+
+      {/* Repetições */}
+      <View style={{ flex: 1, paddingHorizontal: 6 }}>
+        <TextInput
+          style={{
+            backgroundColor: theme.backgroundTertiary,
+            borderRadius: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            color: theme.text,
+            fontSize: 15,
+            fontWeight: "600",
+            textAlign: "center",
+            borderWidth: 1.5,
+            borderColor: focusedReps ? theme.accent : "transparent",
+          }}
+          placeholder={prevReps}
+          placeholderTextColor={theme.textTertiary}
+          keyboardType="number-pad"
+          value={serie.repeticoes}
+          onChangeText={(val) => onChangeValor("repeticoes", val)}
+          onFocus={() => setFocusedReps(true)}
+          onBlur={() => setFocusedReps(false)}
+          accessibilityLabel={`Repetições para série ${index + 1} de ${exercicioNome}`}
+        />
+        {hasPrevious && !serie.repeticoes && (
+          <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
+            ↑{prevReps}
+          </Text>
+        )}
+      </View>
+
+      {/* Checkbox */}
+      <Pressable
+        onPress={handleTogglePress}
+        accessibilityLabel={serie.concluida ? "Marcar como não concluída" : "Marcar como concluída"}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: serie.concluida }}
+        style={{ width: 36, alignItems: "center", justifyContent: "center", paddingVertical: 4 }}
+      >
+        <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+          <Ionicons
+            name={serie.concluida ? "checkmark-circle" : "ellipse-outline"}
+            size={24}
+            color={serie.concluida ? theme.accentGreen || "#34C759" : theme.textTertiary}
+          />
+        </Animated.View>
+      </Pressable>
+    </View>
+  );
+});
+
+// ─────────────────────────────────────────────────────────────
+// Anel de descanso — arco SVG real (substitui a simulação por
+// opacidade), animado suavemente a cada tick.
+// ─────────────────────────────────────────────────────────────
+function RestRing({ restTimer, restDefault }: { restTimer: number; restDefault: number }) {
+  const size = 64;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progressAnim = useRef(new Animated.Value(restTimer / restDefault)).current;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: restTimer / restDefault,
+      duration: 950,
+      easing: Easing.linear,
+      useNativeDriver: false, // strokeDashoffset não suporta native driver
+    }).start();
+  }, [restTimer, restDefault]);
+
+  const strokeDashoffset = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
+
+  return (
+    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <Svg width={size} height={size} style={{ transform: [{ rotate: "-90deg" }] }}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#007AFF33"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <AnimatedCircle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#007AFF"
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+        />
+      </Svg>
+      <View style={{ position: "absolute", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "bold", letterSpacing: -0.5 }}>
+          {restTimer}
+        </Text>
+        <Text style={{ color: "#7AB8FF", fontSize: 12, fontWeight: "700", marginTop: -2 }}>
+          seg
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export default function WorkoutActive() {
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
   const posthog = usePostHog();
+
   const [loading, setLoading] = useState(true);
   const [workout, setWorkout] = useState<any>(null);
   const [exercicios, setExercicios] = useState<ExercicioAtivo[]>([]);
   const [tempoDecorrido, setTempoDecorrido] = useState(0);
   const [timerPaused, setTimerPaused] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  const tickRef = useRef<number | null>(null);
-  const restTimerRef = useRef<number | null>(null);
   const [restTimer, setRestTimer] = useState<number | null>(null);
   const [restDefault, setRestDefault] = useState(90);
 
+  const tickRef = useRef<number | null>(null);
+  const restTimerRef = useRef<number | null>(null);
   const timerPausedRef = useRef(false);
   const startTimeRef = useRef(Date.now());
   const pausedDurationRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
 
+  // Animações
+  const contentFade = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const restBannerAnim = useRef(new Animated.Value(0)).current;
+
   // Sync timerPaused state → ref so the interval closure always reads current value
   useEffect(() => {
     timerPausedRef.current = timerPaused;
   }, [timerPaused]);
-
-  // Partilha de resultados — gerida no ecrã summary
 
   useEffect(() => {
     loadWorkout();
@@ -73,13 +292,52 @@ export default function WorkoutActive() {
       .catch(() => {});
     startTimeRef.current = Date.now();
     startTick();
-    const sub = AppState.addEventListener('change', handleAppStateChange);
+    const sub = AppState.addEventListener("change", handleAppStateChange);
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
       sub.remove();
     };
   }, []);
+
+  // Fade-in do conteúdo assim que o treino termina de carregar
+  useEffect(() => {
+    if (!loading) {
+      Animated.timing(contentFade, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [loading]);
+
+  // Ponto pulsante junto ao timer — só ativo enquanto o treino corre
+  useEffect(() => {
+    if (!timerPaused) {
+      pulseLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        ])
+      );
+      pulseLoopRef.current.start();
+    } else {
+      pulseLoopRef.current?.stop();
+      pulseAnim.setValue(1);
+    }
+    return () => pulseLoopRef.current?.stop();
+  }, [timerPaused]);
+
+  // Entrada/saída animada do banner de descanso
+  useEffect(() => {
+    Animated.spring(restBannerAnim, {
+      toValue: restTimer !== null ? 1 : 0,
+      friction: 8,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [restTimer !== null]);
 
   function getElapsed(): number {
     const now = Date.now();
@@ -110,7 +368,6 @@ export default function WorkoutActive() {
       pausedAtRef.current = null;
     }
     setTimerPaused(false);
-    // Atualizar imediatamente ao retomar
     setTempoDecorrido(getElapsed());
   }
 
@@ -123,16 +380,13 @@ export default function WorkoutActive() {
   }
 
   function handleAppStateChange(state: string) {
-    if (state === 'active') {
-      // App voltou ao primeiro plano
+    if (state === "active") {
       if (pausedAtRef.current !== null) {
         pausedDurationRef.current += Date.now() - pausedAtRef.current;
         pausedAtRef.current = null;
       }
-      // Atualizar tempo imediatamente ao voltar
       setTempoDecorrido(getElapsed());
-    } else if (state === 'background' || state === 'inactive') {
-      // App foi para background — pausar se não estava já pausado
+    } else if (state === "background" || state === "inactive") {
       if (!timerPausedRef.current && pausedAtRef.current === null) {
         pausedAtRef.current = Date.now();
       }
@@ -141,22 +395,16 @@ export default function WorkoutActive() {
 
   async function loadWorkout() {
     try {
-      // Carregar todos os treinos do utilizador
       const allWorkouts = await workoutApi.getUserWorkouts(user!.id).catch(() => []);
-      
-      // Encontrar e guardar o treino atual (Bug 1: setWorkout nunca era chamado)
       const currentWorkout = allWorkouts.find((w: any) => w.id_treino === Number(id));
       if (currentWorkout) setWorkout(currentWorkout);
 
-      // Carregar exercícios diretamente (Bug 2: antes só carregava se exercicios_nomes não fosse vazio)
       const response = await workoutApi.getWorkoutExercises(Number(id)).catch(() => ({ exercicios: [] }));
       const exerciciosDoTreino: any[] = response?.exercicios || [];
-
       if (exerciciosDoTreino.length === 0) {
         Alert.alert("Aviso", "Este treino não tem exercícios definidos.");
       }
 
-      // Bug 5: Buscar dados da última sessão DESTE treino específico para sugestões
       let previousWorkoutData: any = null;
       const history = await metricsApi.getHistory(user!.id).catch(() => []);
       const thisTreinoSession = Array.isArray(history)
@@ -166,15 +414,11 @@ export default function WorkoutActive() {
         previousWorkoutData = await metricsApi.getSessionDetails(thisTreinoSession.id_sessao).catch(() => null);
       }
 
-      // Transformar exercícios para o formato ativo
       const exerciciosAtivos: ExercicioAtivo[] = exerciciosDoTreino.map((ex: any) => {
         let previousSeries: Serie[] | undefined = undefined;
-        
-        // Procurar dados do treino anterior
+
         if (previousWorkoutData?.exercicios) {
-          const previousEx = previousWorkoutData.exercicios.find(
-            (pex: any) => pex.id === ex.id
-          );
+          const previousEx = previousWorkoutData.exercicios.find((pex: any) => pex.id === ex.id);
           if (previousEx?.series) {
             previousSeries = previousEx.series.map((s: any) => ({
               numero: s.numero_serie,
@@ -196,13 +440,11 @@ export default function WorkoutActive() {
           ],
         };
       });
-      
-      // Track workout started
+
       posthog.capture("workout_started", {
         workout_id: Number(id),
         workout_name: currentWorkout?.nome || "Desconhecido",
       });
-
       setExercicios(exerciciosAtivos);
     } catch (error) {
       console.error("Erro ao carregar treino:", error);
@@ -233,22 +475,28 @@ export default function WorkoutActive() {
     setRestTimer(null);
   }
 
+  function ajustarRestTimer(delta: number) {
+    setRestTimer((prev) => {
+      if (prev === null) return prev;
+      const next = Math.max(0, prev + delta);
+      if (next === 0) {
+        if (restTimerRef.current) clearInterval(restTimerRef.current);
+        return null;
+      }
+      return next;
+    });
+  }
+
   function formatarTempo(segundos: number) {
     const horas = Math.floor(segundos / 3600);
     const minutos = Math.floor((segundos % 3600) / 60);
     const segs = segundos % 60;
-
     if (horas > 0) {
-      return `${horas}:${minutos.toString().padStart(2, "0")}:${segs
-        .toString()
-        .padStart(2, "0")}`;
+      return `${horas}:${minutos.toString().padStart(2, "0")}:${segs.toString().padStart(2, "0")}`;
     }
-    return `${minutos.toString().padStart(2, "0")}:${segs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${minutos.toString().padStart(2, "0")}:${segs.toString().padStart(2, "0")}`;
   }
 
-  // Obter placeholder/sugestão do treino anterior
   function getPlaceholder(exercicioId: number, serieIndex: number, campo: "peso" | "repeticoes"): string {
     const exercicio = exercicios.find((ex: any) => ex.id === exercicioId);
     if (!exercicio?.previousSeries || !exercicio.previousSeries[serieIndex]) {
@@ -257,13 +505,11 @@ export default function WorkoutActive() {
     return campo === "peso" ? exercicio.previousSeries[serieIndex].peso : exercicio.previousSeries[serieIndex].repeticoes;
   }
 
-  // Auto-preencher com dados anteriores quando clica no check
   function autoFillFromPrevious(exercicioId: number, serieIndex: number) {
     const exercicio = exercicios.find((ex: any) => ex.id === exercicioId);
     if (!exercicio?.previousSeries || !exercicio.previousSeries[serieIndex]) {
       return;
     }
-
     const previousSerie = exercicio.previousSeries[serieIndex];
     if (!exercicio.series[serieIndex].peso) {
       atualizarSerie(exercicioId, serieIndex, "peso", previousSerie.peso);
@@ -273,29 +519,21 @@ export default function WorkoutActive() {
     }
   }
 
-  function toggleExpandir(_exercicioId: number) {
-    // Exercícios sempre visíveis — função mantida por compatibilidade
-  }
-
-  function atualizarSerie(
-    exercicioId: number,
-    serieIndex: number,
-    campo: "repeticoes" | "peso",
-    valor: string
-  ) {
-    setExercicios(
-      exercicios.map((ex: any) =>
-        ex.id === exercicioId
-          ? {
-              ...ex,
-              series: ex.series.map((s: any, i: number) =>
-                i === serieIndex ? { ...s, [campo]: valor } : s
-              ),
-            }
-          : ex
-      )
-    );
-  }
+  const atualizarSerie = useCallback(
+    (exercicioId: number, serieIndex: number, campo: "repeticoes" | "peso", valor: string) => {
+      setExercicios((prev) =>
+        prev.map((ex: any) =>
+          ex.id === exercicioId
+            ? {
+                ...ex,
+                series: ex.series.map((s: any, i: number) => (i === serieIndex ? { ...s, [campo]: valor } : s)),
+              }
+            : ex
+        )
+      );
+    },
+    []
+  );
 
   function toggleSerieConcluida(exercicioId: number, serieIndex: number) {
     const exercicio = exercicios.find((ex) => ex.id === exercicioId);
@@ -306,14 +544,12 @@ export default function WorkoutActive() {
     } else {
       skipRestTimer();
     }
-    setExercicios(
-      exercicios.map((ex: any) =>
+    setExercicios((prev) =>
+      prev.map((ex: any) =>
         ex.id === exercicioId
           ? {
               ...ex,
-              series: ex.series.map((s: any, i: number) =>
-                i === serieIndex ? { ...s, concluida: !s.concluida } : s
-              ),
+              series: ex.series.map((s: any, i: number) => (i === serieIndex ? { ...s, concluida: !s.concluida } : s)),
             }
           : ex
       )
@@ -321,19 +557,14 @@ export default function WorkoutActive() {
   }
 
   function adicionarSerie(exercicioId: number) {
-    setExercicios(
-      exercicios.map((ex: any) =>
+    setExercicios((prev) =>
+      prev.map((ex: any) =>
         ex.id === exercicioId
           ? {
               ...ex,
               series: [
                 ...ex.series,
-                {
-                  numero: ex.series.length + 1,
-                  repeticoes: "",
-                  peso: "",
-                  concluida: false,
-                },
+                { numero: ex.series.length + 1, repeticoes: "", peso: "", concluida: false },
               ],
             }
           : ex
@@ -342,34 +573,25 @@ export default function WorkoutActive() {
   }
 
   function cancelarTreino() {
-    Alert.alert(
-      "Cancelar Treino",
-      "Tens a certeza? Todo o progresso será perdido.",
-      [
-        { text: "Continuar Treino", style: "cancel" },
-        {
-          text: "Cancelar",
-          style: "destructive",
-          onPress: () => {
-            // Bug 6: parar o timer ao cancelar
-            if (tickRef.current) clearInterval(tickRef.current);
-            router.back();
-          },
+    Alert.alert("Cancelar Treino", "Tens a certeza? Todo o progresso será perdido.", [
+      { text: "Continuar Treino", style: "cancel" },
+      {
+        text: "Cancelar",
+        style: "destructive",
+        onPress: () => {
+          if (tickRef.current) clearInterval(tickRef.current);
+          router.back();
         },
-      ]
-    );
+      },
+    ]);
   }
 
   async function concluirTreino() {
-    const temSeriesConcluidas = exercicios.some((ex: any) =>
-      ex.series.some((s: any) => s.concluida)
-    );
-
+    const temSeriesConcluidas = exercicios.some((ex: any) => ex.series.some((s: any) => s.concluida));
     if (!temSeriesConcluidas) {
       Alert.alert("Atenção", "Completa pelo menos uma série antes de terminar.");
       return;
     }
-
     Alert.alert("Concluir Treino", "Queres terminar este treino?", [
       { text: "Cancelar", style: "cancel" },
       {
@@ -387,11 +609,9 @@ export default function WorkoutActive() {
                 });
               }
             }
-
             const sessionResult = await workoutApi.saveSession(user!.id, Number(id), tempoDecorrido, todasAsSeries);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            // Calcular volume total
             const volume = todasAsSeries.reduce((acc, s) => acc + s.peso * s.repeticoes, 0);
             const exerciciosPayload = exercicios
               .map((ex) => ({
@@ -402,7 +622,6 @@ export default function WorkoutActive() {
               }))
               .filter((ex) => ex.series.length > 0);
 
-            // Track workout completed
             posthog.capture("workout_completed", {
               workout_id: Number(id),
               workout_nome: workout?.nome || "Treino",
@@ -415,11 +634,10 @@ export default function WorkoutActive() {
             if (tickRef.current) clearInterval(tickRef.current);
             if (restTimerRef.current) clearInterval(restTimerRef.current);
 
-            // Navegar para feedback
             router.replace({
               pathname: "/workout/feedback",
               params: {
-                session_id: String(sessionResult?.id_sessao || ''),
+                session_id: String(sessionResult?.id_sessao || ""),
                 nome: workout?.nome || "Treino",
                 duracao: String(tempoDecorrido),
                 totalSeries: String(todasAsSeries.length),
@@ -436,13 +654,26 @@ export default function WorkoutActive() {
     ]);
   }
 
-  // Calcular progresso global
   const totalSeries = exercicios.reduce((acc: number, ex: any) => acc + ex.series.length, 0);
   const seriesConcluidas = exercicios.reduce(
     (acc: number, ex: any) => acc + ex.series.filter((s: any) => s.concluida).length,
     0
   );
   const progressoPct = totalSeries > 0 ? seriesConcluidas / totalSeries : 0;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: progressoPct,
+      duration: 400,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false, // width em % não suporta native driver
+    }).start();
+  }, [progressoPct]);
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
 
   if (loading) {
     return (
@@ -454,20 +685,21 @@ export default function WorkoutActive() {
   }
 
   return (
-
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {/* ── Header: Timer + Pause ── */}
-      <View style={{
-        paddingTop: safeTop + 12,
-        paddingHorizontal: 20,
-        paddingBottom: 12,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: theme.backgroundSecondary,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.backgroundTertiary,
-      }}>
+      <View
+        style={{
+          paddingTop: safeTop + 12,
+          paddingHorizontal: 20,
+          paddingBottom: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          backgroundColor: theme.backgroundSecondary,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.backgroundTertiary,
+        }}
+      >
         <Pressable
           onPress={cancelarTreino}
           accessibilityLabel="Cancelar treino"
@@ -478,7 +710,23 @@ export default function WorkoutActive() {
         </Pressable>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Ionicons name="time-outline" size={20} color={theme.accent} />
+          <View>
+            <Ionicons name="time-outline" size={20} color={theme.accent} />
+            {!timerPaused && (
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  top: -2,
+                  right: -2,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: theme.accentGreen || "#34C759",
+                  opacity: pulseAnim,
+                }}
+              />
+            )}
+          </View>
           <Text style={{ color: theme.text, fontSize: 22, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
             {formatarTempo(tempoDecorrido)}
           </Text>
@@ -498,21 +746,29 @@ export default function WorkoutActive() {
             justifyContent: "center",
           })}
         >
-          <Ionicons
-            name={timerPaused ? "play" : "pause"}
-            size={22}
-            color={timerPaused ? "#fff" : theme.text}
-          />
+          <Ionicons name={timerPaused ? "play" : "pause"} size={22} color={timerPaused ? "#fff" : theme.text} />
         </Pressable>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* ...existing code for exercises... */}
-        {exercicios.map((exercicio: ExercicioAtivo, index: number) => {
+      <Animated.ScrollView
+        style={{ flex: 1, opacity: contentFade }}
+        contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }}
+      >
+        {exercicios.map((exercicio: ExercicioAtivo) => {
           const concluidas = exercicio.series.filter((s: any) => s.concluida).length;
           const todasConcluidas = concluidas === exercicio.series.length && exercicio.series.length > 0;
           return (
-            <View key={exercicio.id} style={{ backgroundColor: theme.backgroundSecondary, borderRadius: 20, marginBottom: 14, overflow: "hidden", flexDirection: "row" }}>
+            <View
+              key={exercicio.id}
+              style={{
+                backgroundColor: theme.backgroundSecondary,
+                borderRadius: 20,
+                marginHorizontal: 16,
+                marginBottom: 14,
+                overflow: "hidden",
+                flexDirection: "row",
+              }}
+            >
               <View style={{ width: 4, backgroundColor: todasConcluidas ? theme.accentGreen : theme.accent }} />
               <View style={{ flex: 1, padding: 16 }}>
                 {/* ── Exercise Header ── */}
@@ -525,14 +781,22 @@ export default function WorkoutActive() {
                   <Text style={{ color: theme.text, fontSize: 16, fontWeight: "700", flex: 1 }} numberOfLines={2}>
                     {exercicio.nome}
                   </Text>
-                  <View style={{
-                    backgroundColor: theme.backgroundTertiary,
-                    borderRadius: 10,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    marginLeft: 8,
-                  }}>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12, fontWeight: "700" }}>
+                  <View
+                    style={{
+                      backgroundColor: todasConcluidas ? (theme.accentGreen || "#34C759") + "22" : theme.backgroundTertiary,
+                      borderRadius: 10,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: todasConcluidas ? theme.accentGreen || "#34C759" : theme.textSecondary,
+                        fontSize: 12,
+                        fontWeight: "700",
+                      }}
+                    >
                       {concluidas}/{exercicio.series.length}
                     </Text>
                   </View>
@@ -540,7 +804,6 @@ export default function WorkoutActive() {
 
                 {/* ── Series Table ── */}
                 <View style={{ gap: 6 }}>
-                  {/* Column headers */}
                   <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4, marginBottom: 2 }}>
                     <Text style={{ width: 44, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
                       SÉRIE
@@ -554,103 +817,26 @@ export default function WorkoutActive() {
                     <View style={{ width: 36 }} />
                   </View>
 
-                  {/* Series rows */}
                   {exercicio.series.map((serie: Serie, sIndex: number) => {
                     const prevPeso = getPlaceholder(exercicio.id, sIndex, "peso");
                     const prevReps = getPlaceholder(exercicio.id, sIndex, "repeticoes");
                     const hasPrevious = prevPeso !== "-" && prevReps !== "-";
                     return (
-                      <View key={sIndex} style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        backgroundColor: theme.background,
-                        borderRadius: 12,
-                        paddingVertical: 8,
-                        paddingHorizontal: 4,
-                      }}>
-                        {/* Série number */}
-                        <View style={{ width: 44, alignItems: "center" }}>
-                          <Text style={{ color: theme.textTertiary, fontSize: 14, fontWeight: "600" }}>
-                            {serie.numero || sIndex + 1}
-                          </Text>
-                        </View>
-
-                        {/* Peso input */}
-                        <View style={{ flex: 1, paddingRight: 6 }}>
-                          <TextInput
-                            style={{
-                              backgroundColor: theme.backgroundTertiary,
-                              borderRadius: 8,
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                              color: theme.text,
-                              fontSize: 15,
-                              fontWeight: "600",
-                              textAlign: "center",
-                            }}
-                            placeholder={prevPeso}
-                            placeholderTextColor={theme.accent}
-                            keyboardType="decimal-pad"
-                            value={serie.peso}
-                            onChangeText={(val) => atualizarSerie(exercicio.id, sIndex, "peso", val)}
-                            onFocus={() => setFocusedField(`${exercicio.id}-${sIndex}-peso`)}
-                            onBlur={() => setFocusedField(null)}
-                            accessibilityLabel={`Peso para série ${sIndex + 1} de ${exercicio.nome}`}
-                          />
-                          {hasPrevious && !serie.peso && (
-                            <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
-                              ↑{prevPeso}kg
-                            </Text>
-                          )}
-                        </View>
-
-                        {/* Repetições input */}
-                        <View style={{ flex: 1, paddingHorizontal: 6 }}>
-                          <TextInput
-                            style={{
-                              backgroundColor: theme.backgroundTertiary,
-                              borderRadius: 8,
-                              paddingHorizontal: 10,
-                              paddingVertical: 6,
-                              color: theme.text,
-                              fontSize: 15,
-                              fontWeight: "600",
-                              textAlign: "center",
-                            }}
-                            placeholder={prevReps}
-                            placeholderTextColor={theme.accent}
-                            keyboardType="number-pad"
-                            value={serie.repeticoes}
-                            onChangeText={(val) => atualizarSerie(exercicio.id, sIndex, "repeticoes", val)}
-                            onFocus={() => setFocusedField(`${exercicio.id}-${sIndex}-reps`)}
-                            onBlur={() => setFocusedField(null)}
-                            accessibilityLabel={`Repetições para série ${sIndex + 1} de ${exercicio.nome}`}
-                          />
-                          {hasPrevious && !serie.repeticoes && (
-                            <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
-                              ↑{prevReps}
-                            </Text>
-                          )}
-                        </View>
-
-                        {/* Checkbox */}
-                        <Pressable
-                          onPress={() => {
-                            autoFillFromPrevious(exercicio.id, sIndex);
-                            toggleSerieConcluida(exercicio.id, sIndex);
-                          }}
-                          accessibilityLabel={serie.concluida ? "Marcar como não concluída" : "Marcar como concluída"}
-                          accessibilityRole="checkbox"
-                          accessibilityState={{ checked: serie.concluida }}
-                          style={{ width: 36, alignItems: "center", justifyContent: "center", paddingVertical: 4 }}
-                        >
-                          <Ionicons
-                            name={serie.concluida ? "checkmark-circle" : "ellipse-outline"}
-                            size={24}
-                            color={serie.concluida ? theme.accentGreen || "#34C759" : theme.textTertiary}
-                          />
-                        </Pressable>
-                      </View>
+                      <SerieRow
+                        key={sIndex}
+                        serie={serie}
+                        index={sIndex}
+                        exercicioNome={exercicio.nome}
+                        prevPeso={prevPeso}
+                        prevReps={prevReps}
+                        hasPrevious={hasPrevious}
+                        theme={theme}
+                        onChangeValor={(campo, valor) => atualizarSerie(exercicio.id, sIndex, campo, valor)}
+                        onToggleConcluida={() => {
+                          autoFillFromPrevious(exercicio.id, sIndex);
+                          toggleSerieConcluida(exercicio.id, sIndex);
+                        }}
+                      />
                     );
                   })}
                 </View>
@@ -675,117 +861,112 @@ export default function WorkoutActive() {
                   })}
                 >
                   <Ionicons name="add-circle-outline" size={18} color={theme.accent} />
-                  <Text style={{ color: theme.accent, fontSize: 13, fontWeight: "700" }}>
-                    Adicionar Série
-                  </Text>
+                  <Text style={{ color: theme.accent, fontSize: 13, fontWeight: "700" }}>Adicionar Série</Text>
                 </Pressable>
               </View>
             </View>
           );
         })}
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* ── Barra de progresso global ── */}
-      <View style={{ height: 4, backgroundColor: theme.backgroundTertiary, marginHorizontal: 24, borderRadius: 2, marginBottom: 6 }}>
-        <View style={{ height: 4, width: `${progressoPct * 100}%`, backgroundColor: theme.accent, borderRadius: 2 }} />
+      {/* ── Barra de progresso global (animada) ── */}
+      <View
+        style={{
+          height: 4,
+          backgroundColor: theme.backgroundTertiary,
+          marginHorizontal: 24,
+          borderRadius: 2,
+          marginBottom: 6,
+          overflow: "hidden",
+        }}
+      >
+        <Animated.View style={{ height: 4, width: progressWidth, backgroundColor: theme.accent, borderRadius: 2 }} />
       </View>
 
       {/* ── Banner de descanso ── */}
       {restTimer !== null && (
-        <Pressable
-          onPress={skipRestTimer}
-          accessibilityLabel={`Descanso: ${restTimer} segundos restantes. Toca para saltar.`}
-          accessibilityRole="button"
-          style={({ pressed }) => ({
+        <Animated.View
+          style={{
             marginHorizontal: 24,
             marginTop: 10,
             marginBottom: 8,
-            borderRadius: 24,
-            backgroundColor: '#173A5F',
-            padding: 18,
-            opacity: pressed ? 0.85 : 1,
-            shadowColor: '#007AFF',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.25,
-            shadowRadius: 18,
-            elevation: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-          })}
+            opacity: restBannerAnim,
+            transform: [
+              {
+                translateY: restBannerAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
+              },
+            ],
+          }}
         >
-          {/* Circular Progress Indicator */}
-          <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-            <View style={{ position: 'relative', width: 64, height: 64 }}>
-              {/* Outer circle */}
-              <View style={{
-                position: 'absolute',
-                top: 0, left: 0,
-                width: 64, height: 64,
-                borderRadius: 32,
-                borderWidth: 4,
-                borderColor: '#007AFF33',
-              }} />
-              {/* Progress arc (simulate with inner circle proportional to time) */}
-              <View style={{
-                position: 'absolute',
-                top: 4, left: 4,
-                width: 56, height: 56,
-                borderRadius: 28,
-                backgroundColor: '#007AFF',
-                opacity: 0.18 + 0.82 * (restTimer / restDefault),
-              }} />
-              {/* Timer value */}
-              <View style={{
-                position: 'absolute',
-                top: 0, left: 0,
-                width: 64, height: 64,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Text style={{ color: '#fff', fontSize: 28, fontWeight: 'bold', letterSpacing: -0.5 }}>
-                  {restTimer}
-                </Text>
-                <Text style={{ color: '#007AFF', fontSize: 13, fontWeight: '700', marginTop: -2 }}>
-                  seg
-                </Text>
+          <Pressable
+            onPress={skipRestTimer}
+            accessibilityLabel={`Descanso: ${restTimer} segundos restantes. Toca para saltar.`}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              borderRadius: 24,
+              backgroundColor: "#0B1E33",
+              padding: 18,
+              opacity: pressed ? 0.85 : 1,
+              shadowColor: "#007AFF",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.25,
+              shadowRadius: 18,
+              elevation: 10,
+              alignItems: "center",
+              justifyContent: "center",
+            })}
+          >
+            <View style={{ marginBottom: 6 }}>
+              <RestRing restTimer={restTimer} restDefault={restDefault} />
+            </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Ionicons name="timer-outline" size={20} color="#7AB8FF" style={{ marginRight: 6 }} />
+                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.2 }}>Descanso</Text>
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <TouchableOpacity
+                  onPress={() => ajustarRestTimer(-15)}
+                  accessibilityLabel="Tirar 15 segundos ao descanso"
+                  hitSlop={8}
+                  style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+                >
+                  <Text style={{ color: "#7AB8FF", fontSize: 13, fontWeight: "700" }}>-15s</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => ajustarRestTimer(15)}
+                  accessibilityLabel="Adicionar 15 segundos ao descanso"
+                  hitSlop={8}
+                  style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+                >
+                  <Text style={{ color: "#7AB8FF", fontSize: 13, fontWeight: "700" }}>+15s</Text>
+                </TouchableOpacity>
+                <Ionicons name="arrow-forward-circle" size={22} color="#fff" style={{ marginLeft: 4 }} />
               </View>
             </View>
-          </View>
-          {/* Info and skip */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="timer-outline" size={20} color="#007AFF" style={{ marginRight: 6 }} />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.2 }}>
-                Descanso
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginRight: 8 }}>
-                Toca para saltar
-              </Text>
-              <Ionicons name="arrow-forward-circle" size={22} color="#fff" />
-            </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        </Animated.View>
       )}
 
       {/* ── Footer fixo ── */}
-      <View style={{
-        paddingHorizontal: 24,
-        paddingTop: 12,
-        paddingBottom: 28,
-        backgroundColor: theme.background,
-        borderTopWidth: 1,
-        borderTopColor: theme.backgroundTertiary,
-      }}>
-        {/* ── Concluir Treino Button ── */}
+      <View
+        style={{
+          paddingHorizontal: 24,
+          paddingTop: 12,
+          paddingBottom: 28,
+          backgroundColor: theme.background,
+          borderTopWidth: 1,
+          borderTopColor: theme.backgroundTertiary,
+        }}
+      >
         <Pressable
           onPress={concluirTreino}
           accessibilityLabel="Concluir treino"
           accessibilityRole="button"
-          style={({ pressed }) => ([
+          style={({ pressed }) => [
             {
-              // Gradient background (simulate with two colors if not using LinearGradient)
               backgroundColor: theme.accent,
               paddingVertical: 20,
               borderRadius: 24,
@@ -801,34 +982,33 @@ export default function WorkoutActive() {
               elevation: 8,
               transform: [{ scale: pressed ? 0.97 : 1 }],
             },
-          ])}
+          ]}
         >
           <Ionicons name="checkmark-circle" size={26} color="#fff" style={{ marginRight: 2 }} />
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18, letterSpacing: -0.3 }}>
-            Concluir Treino
-          </Text>
+          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18, letterSpacing: -0.3 }}>Concluir Treino</Text>
           {totalSeries > 0 && (
-            <View style={{
-              backgroundColor: "rgba(255,255,255,0.18)",
-              borderRadius: 12,
-              paddingHorizontal: 10,
-              paddingVertical: 2,
-              marginLeft: 6,
-            }}>
+            <View
+              style={{
+                backgroundColor: "rgba(255,255,255,0.18)",
+                borderRadius: 12,
+                paddingHorizontal: 10,
+                paddingVertical: 2,
+                marginLeft: 6,
+              }}
+            >
               <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 14, fontWeight: "700" }}>
                 {seriesConcluidas}/{totalSeries}
               </Text>
             </View>
           )}
         </Pressable>
-        {/* Optional: Progress bar below button */}
+
         {totalSeries > 0 && (
-          <View style={{ height: 5, backgroundColor: theme.backgroundTertiary, borderRadius: 3, marginTop: 12 }}>
-            <View style={{ height: 5, width: `${progressoPct * 100}%`, backgroundColor: theme.accent, borderRadius: 3 }} />
+          <View style={{ height: 5, backgroundColor: theme.backgroundTertiary, borderRadius: 3, marginTop: 12, overflow: "hidden" }}>
+            <Animated.View style={{ height: 5, width: progressWidth, backgroundColor: theme.accent, borderRadius: 3 }} />
           </View>
         )}
       </View>
-
     </View>
   );
 }

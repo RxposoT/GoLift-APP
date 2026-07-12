@@ -1,0 +1,10 @@
+[mcp_servers.supabase]
+command = "npx"
+args = [
+    "-y",
+    "@supabase/mcp-server@latest",
+]
+env_vars = [
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+]

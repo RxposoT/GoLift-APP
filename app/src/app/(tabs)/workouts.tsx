@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -21,7 +21,6 @@ import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { Text, Card, Button, Input, EmptyState } from "../../components/ui";
 import { WorkoutsScreenSkeleton } from "../../components/ui/SkeletonLoader";
 import { spacing, radius } from "../../styles/tokens";
-import { AMBER } from "../../styles/colors";
 
 export default function Workouts() {
   const { user } = useAuth();
@@ -31,7 +30,7 @@ export default function Workouts() {
   const [refreshing, setRefreshing] = useState(false);
   const [myWorkouts, setMyWorkouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bodyPartFilter, setBodyPartFilter] = useState<string | null>(null);
+  const [planType, setPlanType] = useState<"free" | "pago">("free");
 
   // Partilha de treino
   const [showShareModal, setShowShareModal] = useState(false);
@@ -66,7 +65,9 @@ export default function Workouts() {
   }
 
   // Modal criar / editar treino
+  const [showCreateOptions, setShowCreateOptions] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAiLockedModal, setShowAiLockedModal] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState<any>(null); // null = criar, objeto = editar
   const [workoutName, setWorkoutName] = useState("");
   const [availableExercises, setAvailableExercises] = useState<any[]>([]);
@@ -78,6 +79,7 @@ export default function Workouts() {
   useEffect(() => {
     if (user?.id) {
       loadData();
+      planoApi.getUserPlan(user.id).then(({ plano }) => setPlanType(plano === "pago" ? "pago" : "free")).catch(() => setPlanType("free"));
     }
   }, [user]);
 
@@ -122,6 +124,20 @@ export default function Workouts() {
     } finally {
       setLoadingExercises(false);
     }
+  }
+
+  function openCreateFlow() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowCreateOptions(true);
+  }
+
+  function handleAiCreate() {
+    setShowCreateOptions(false);
+    if (planType !== "pago") {
+      setShowAiLockedModal(true);
+      return;
+    }
+    router.push("/ai-plan");
   }
 
   async function openEditModal(workout: any) {
@@ -310,53 +326,17 @@ export default function Workouts() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <View style={{ paddingHorizontal: 24, paddingTop: safeTop + 12, paddingBottom: 16 }}>
-          <Text variant="display" style={{ lineHeight: 46 }}>
-            Treinos
+        <View style={{ paddingHorizontal: spacing.xxl, paddingTop: safeTop + spacing.lg, paddingBottom: spacing.xxl }}>
+          <Text variant="title1">Treinos</Text>
+          <Text variant="callout" color="textSecondary" style={{ marginTop: spacing.xs }}>
+            Escolhe um treino e começa quando estiveres pronto.
           </Text>
         </View>
 
-        {/* ── AI Plan Card ── */}
-        <Pressable
-          onPress={() => router.push('/ai-plan')}
-          style={({ pressed }) => ({
-            marginHorizontal: 24,
-            marginBottom: 20,
-            backgroundColor: theme.accent,
-            borderRadius: 20,
-            padding: 18,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <View style={{
-            width: 48, height: 48, borderRadius: 14,
-            backgroundColor: "rgba(255,255,255,0.2)",
-            justifyContent: "center", alignItems: "center",
-          }}>
-            <Ionicons name="sparkles" size={24} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="headline" style={{ color: "#fff" }}>
-              Plano de Treino com IA
-            </Text>
-            <Text variant="footnote" style={{ color: "rgba(255,255,255,0.75)" }}>
-              Cria um plano mensal à medida
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
-        </Pressable>
-
-        {/* Meus Treinos */}
         <View style={{ paddingHorizontal: 24 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <Text style={{ fontSize: 20, fontWeight: "800", color: theme.text, letterSpacing: -0.5 }}>
-              Os Meus Treinos
-            </Text>
-            <Button variant="primary" size="sm" icon={<Ionicons name="add" size={18} color="white" />} onPress={openCreateModal}>Novo</Button>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg }}>
+            <Text variant="title3">Os meus treinos</Text>
+            <Button variant="duo" size="sm" icon={<Ionicons name="add" size={16} color="white" />} onPress={openCreateFlow}>Criar</Button>
           </View>
 
           {myWorkouts.length === 0 ? (
@@ -365,12 +345,12 @@ export default function Workouts() {
                 icon="barbell-outline"
                 title="Sem treinos ainda"
                 subtitle="Cria o teu primeiro treino personalizado"
-                actionLabel="Criar Treino"
-                onAction={openCreateModal}
+                actionLabel="Criar treino"
+                onAction={openCreateFlow}
               />
             </Card>
           ) : (
-            <View style={{ gap: 12 }}>
+            <View style={{ gap: spacing.sm }}>
               {myWorkouts.map((workout: any, index: number) => (
                 <Pressable
                   key={workout.id_treino || index}
@@ -379,25 +359,20 @@ export default function Workouts() {
                   accessibilityRole="button"
                   style={({ pressed }) => ({
                     backgroundColor: theme.backgroundSecondary,
-                    borderRadius: 20,
-                    overflow: "hidden",
+                    borderRadius: radius.xl,
+                    borderWidth: 1,
+                    borderColor: theme.border,
                     flexDirection: "row",
                     opacity: pressed ? 0.88 : 1,
+                    marginBottom: spacing.xs,
                   })}
                 >
-                  {/* Stripe lateral */}
-                  <View style={{ width: 4, backgroundColor: workout.is_ia ? AMBER : theme.accent }} />
-
-                  <View style={{ flex: 1, padding: 18 }}>
-                    {/* Header */}
+                  <View style={{ flex: 1, padding: spacing.lg }}>
                     <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
                       <View style={{ flex: 1, marginRight: 12 }}>
                         <Text variant="title3">{workout.nome}</Text>
-                        <Text variant="subhead" color="textSecondary" style={{ marginTop: 3 }}>
-                          {workout.num_exercicios ?? 0} exercícios
-                          {workout.is_ia && (
-                            <Text variant="subhead" color="textSecondary" style={{ color: AMBER }}> AI </Text>
-                          )}
+                        <Text variant="subhead" color="textSecondary" style={{ marginTop: spacing.xs }}>
+                          {workout.num_exercicios ?? 0} exercícios{workout.grupo_tipo ? ` · ${workout.grupo_tipo}` : ""}
                         </Text>
                       </View>
 
@@ -427,28 +402,13 @@ export default function Workouts() {
                           <Ionicons name="trash-outline" size={19} color={theme.textSecondary} />
                         </TouchableOpacity>
 
-                        {/* Botão play */}
-                        <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: workout.is_ia ? AMBER : theme.accent, justifyContent: "center", alignItems: "center", marginLeft: 4 }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.accent, justifyContent: "center", alignItems: "center", marginLeft: 4 }}>
                           <Ionicons name="play" size={18} color="#fff" />
                         </View>
                       </View>
                     </View>
 
-                    {/* Exerc├¡cios preview */}
-                    {workout.exercicios?.length > 0 && (
-                      <View style={{ marginTop: 12, gap: 4 }}>
-                        {workout.exercicios.slice(0, 3).map((ex: any, i: number) => (
-                          <Text key={i} style={{ fontSize: 12, color: theme.textSecondary }}>
-                            · {ex.nome || ex.name}
-                          </Text>
-                        ))}
-                        {workout.exercicios.length > 3 && (
-                          <Text style={{ fontSize: 12, color: theme.textTertiary }}>
-                            +{workout.exercicios.length - 3} mais...
-                          </Text>
-                        )}
-                      </View>
-                    )}
+                    {!!workout.exercicios_nomes && <Text variant="footnote" color="textTertiary" numberOfLines={1} style={{ marginTop: spacing.md }}>{workout.exercicios_nomes}</Text>}
                   </View>
                 </Pressable>
               ))}
@@ -456,6 +416,54 @@ export default function Workouts() {
           )}
         </View>
       </ScrollView>
+
+      {/* Ponto de entrada único para criar treinos */}
+      <Modal visible={showCreateOptions} transparent animationType="fade" onRequestClose={() => setShowCreateOptions(false)}>
+        <Pressable onPress={() => setShowCreateOptions(false)} style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.58)" }}>
+          <Pressable onPress={(event) => event.stopPropagation()} style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl, padding: spacing.xxl, paddingBottom: safeBottom + spacing.xl }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: theme.border, alignSelf: "center", marginBottom: spacing.xxl }} />
+            <Text variant="title2">Como queres começar?</Text>
+            <Text variant="callout" color="textSecondary" style={{ marginTop: spacing.xs, marginBottom: spacing.xl }}>
+              Cria à tua maneira ou deixa a IA orientar a estrutura.
+            </Text>
+            <View style={{ width: "100%", gap: 16 }}>
+              <Button
+                variant="duo"
+                size="lg"
+                onPress={() => { setShowCreateOptions(false); openCreateModal(); }}
+                style={{ width: "100%" }}
+              >
+                Criar Manualmente
+              </Button>
+              <Button
+                variant="duo"
+                size="lg"
+                onPress={handleAiCreate}
+                style={{ width: "100%" }}
+              >
+                Criar com IA
+              </Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* A funcionalidade é visível para todos, mas só pode ser usada no Pro. */}
+      <Modal visible={showAiLockedModal} transparent animationType="fade" onRequestClose={() => setShowAiLockedModal(false)}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.xxl, backgroundColor: "rgba(0,0,0,0.58)" }}>
+          <View style={{ backgroundColor: theme.backgroundSecondary, borderRadius: radius.xxl, padding: spacing.xxl }}>
+            <View style={{ width: 52, height: 52, borderRadius: 18, backgroundColor: theme.backgroundTertiary, justifyContent: "center", alignItems: "center", marginBottom: spacing.lg }}><Ionicons name="lock-closed" size={22} color={theme.textSecondary} /></View>
+            <Text variant="title2">Criação com IA</Text>
+            <Text variant="body" color="textSecondary" style={{ marginTop: spacing.sm, marginBottom: spacing.xxl }}>
+              Esta funcionalidade está disponível no GoLift Pro. Cria planos personalizados para os teus objetivos e rotina.
+            </Text>
+            <Button variant="duo" onPress={() => { setShowAiLockedModal(false); router.push("/upgrade"); }}>Conhecer o GoLift Pro</Button>
+            <Pressable onPress={() => setShowAiLockedModal(false)} style={({ pressed }) => ({ alignItems: "center", paddingVertical: spacing.md, marginTop: spacing.sm, opacity: pressed ? 0.7 : 1 })}>
+              <Text variant="headline" style={{ color: theme.accent }}>Agora não</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Criar Treino */}
       <Modal

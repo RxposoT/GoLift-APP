@@ -2,6 +2,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { pushApi } from "./api/push";
+import { supabase } from "../lib/supabase";
 
 export async function registerForPushNotifications(
   userId: string
@@ -78,4 +79,31 @@ export async function cancelAllScheduled() {
 
 export function getNextScheduledNotifications() {
   return Notifications.getAllScheduledNotificationsAsync();
+}
+
+export async function sendPushNotification(
+  userId: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>
+): Promise<{ sent: number }> {
+  const { data: session } = await supabase.auth.getSession();
+  const token = session?.session?.access_token;
+  if (!token) return { sent: 0 };
+
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return { sent: 0 };
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ user_id: userId, title, body, data }),
+  });
+
+  if (!response.ok) return { sent: 0 };
+  const result = await response.json();
+  return { sent: result.sent ?? 0 };
 }

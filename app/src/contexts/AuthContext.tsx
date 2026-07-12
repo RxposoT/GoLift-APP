@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           $set: {
             email: session.user.email || "",
             nome: restoredUser.nome,
-            tipo: restoredUser.tipo,
+            tipo: restoredUser.tipo ?? 0,
           },
           $set_once: {
             first_login_at: new Date().toISOString(),
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           $set: {
             email: session.user.email || "",
             nome: nextUser.nome,
-            tipo: nextUser.tipo,
+            tipo: nextUser.tipo ?? 0,
           },
         });
       } else {
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           $set: {
             email: userData.email,
             nome: userData.nome,
-            tipo: userData.tipo,
+            tipo: userData.tipo ?? 0,
           },
           $set_once: {
             first_login_at: new Date().toISOString(),
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         posthog.capture("user_logged_in", {
           login_method: "email",
-          user_type: userData.tipo,
+          user_type: userData.tipo ?? 0,
         });
         router.replace("/(tabs)");
       } else {

@@ -165,6 +165,7 @@ export const planoApi = {
       mensagem: string;
       sugestao: string | null;
       feedback_dor: string | null;
+      requer_atencao?: boolean;
     }>("/api/ai/feedback/" + userId, {
       method: "POST",
       body: feedback,

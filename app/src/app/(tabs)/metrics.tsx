@@ -20,6 +20,7 @@ import ProgressoTab from "../../components/metrics/ProgressoTab";
 import CalendarioTab from "../../components/metrics/CalendarioTab";
 import RecordesTab from "../../components/metrics/RecordesTab";
 import WorkoutDetailModal from "../../components/metrics/WorkoutDetailModal";
+import MuscleBalanceMap from "../../components/metrics/MuscleBalanceMap";
 import { spacing, radius } from "../../styles/tokens";
 import { MODAL_BACKDROP } from "../../styles/colors";
 import { formatTime } from "../../utils/format";
@@ -51,7 +52,10 @@ export default function Metrics() {
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Tabs internas
-  const [activeMetricsTab, setActiveMetricsTab] = useState<'progresso' | 'calendario' | 'recordes' | 'ia'>('progresso');
+  const [activeMetricsTab, setActiveMetricsTab] = useState<'progresso' | 'calendario' | 'recordes'>('progresso');
+  const [aiReport, setAiReport] = useState<any>(null);
+  const [loadingAiReport, setLoadingAiReport] = useState(false);
+  const [muscleBalance, setMuscleBalance] = useState<Record<string, number>>({});
   const scrollViewRef = useRef<any>(null);
 
   // Meta semanal
@@ -176,14 +180,23 @@ export default function Metrics() {
     weightApi.upsertEntry(user.id, currentWeek, Number(profile.peso)).catch(() => {});
   }
 
-  function handleTabChange(tab: 'progresso' | 'calendario' | 'recordes' | 'ia') {
-    if (tab === 'ia') {
-      router.push('/ai-report');
-      return;
-    }
+  function handleTabChange(tab: 'progresso' | 'calendario' | 'recordes') {
     setActiveMetricsTab(tab);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   }
+
+  useEffect(() => {
+    if (!user?.id || planoTipo !== 'pago') {
+      setAiReport(null);
+      return;
+    }
+
+    setLoadingAiReport(true);
+    planoApi.getReport(user.id)
+      .then((response) => setAiReport(response.relatorio || null))
+      .catch(() => setAiReport(null))
+      .finally(() => setLoadingAiReport(false));
+  }, [user?.id, planoTipo]);
 
   async function openGoalEdit() {
     const stored = await AsyncStorage.getItem('@golift:weekly_goal');
@@ -208,6 +221,7 @@ export default function Metrics() {
         metricsApi.getHistory(user!.id).catch(() => []),
         metricsApi.getStats(user!.id).catch(() => null),
         userApi.getProfile(user!.id).catch(() => null),
+        metricsApi.getMuscleBalance(user!.id).then(setMuscleBalance).catch(() => {}),
       ]);
 
       setRecords(recordsData || []);
@@ -485,7 +499,6 @@ export default function Metrics() {
           { key: 'progresso' as const, label: 'Progresso' },
           { key: 'calendario' as const, label: 'Calendário' },
           { key: 'recordes' as const, label: 'Recordes' },
-          { key: 'ia' as const, label: '✦ IA' },
         ]).map((tab) => {
           const isActive = activeMetricsTab === tab.key;
           return (
@@ -511,6 +524,7 @@ export default function Metrics() {
 
       {/* ── TAB: Progresso ── */}
       {activeMetricsTab === 'progresso' && (
+        <>
         <ProgressoTab
           theme={theme}
           weekProgress={weekProgress}
@@ -523,6 +537,70 @@ export default function Metrics() {
           openGoalEdit={openGoalEdit}
           saveCurrentWeekWeight={saveCurrentWeekWeight}
         />
+
+        <View style={{ paddingHorizontal: spacing.xxl, marginTop: spacing.xxl, marginBottom: spacing.huge }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md }}>
+            <Text variant="title3">Insights personalizados</Text>
+            <Ionicons name="sparkles" size={18} color={planoTipo === 'pago' ? theme.accent : theme.textTertiary} />
+          </View>
+
+          {planoTipo !== 'pago' ? (
+            <TouchableOpacity
+              onPress={() => router.push('/upgrade')}
+              style={{ backgroundColor: theme.backgroundSecondary, borderRadius: radius.xl, padding: spacing.xl, overflow: "hidden" }}
+              accessibilityRole="button"
+              accessibilityLabel="Conhecer GoLift Pro"
+            >
+              <View style={{ opacity: 0.42 }}>
+                <Text variant="headline" style={{ marginBottom: spacing.xs }}>O teu próximo foco</Text>
+                <Text variant="callout" color="textSecondary">A análise do treino, recuperação e progressão aparece aqui.</Text>
+              </View>
+              <View style={{ position: "absolute", right: spacing.lg, top: spacing.lg, width: 38, height: 38, borderRadius: 19, backgroundColor: theme.backgroundTertiary, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="lock-closed" size={17} color={theme.textSecondary} />
+              </View>
+              <Text variant="subhead" style={{ color: theme.accent, marginTop: spacing.lg }}>Disponível no GoLift Pro</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ backgroundColor: theme.backgroundSecondary, borderRadius: radius.xl, padding: spacing.xl }}>
+              {loadingAiReport ? (
+                <Text variant="callout" color="textSecondary">A analisar o teu treino e recuperação...</Text>
+              ) : aiReport ? (
+                <>
+                  <Text variant="headline" style={{ marginBottom: spacing.sm }}>{aiReport.avaliacao}</Text>
+                  <Text variant="callout" color="textSecondary" style={{ marginBottom: spacing.lg }}>{aiReport.equilibrio}</Text>
+                  {(aiReport.melhorias || []).slice(0, 2).map((melhoria: string, index: number) => (
+                    <View key={index} style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
+                      <Ionicons name="arrow-up-circle-outline" size={17} color={theme.accent} />
+                      <Text variant="callout" style={{ flex: 1 }}>{melhoria}</Text>
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <Text variant="callout" color="textSecondary">Ainda não há dados suficientes para criar o teu primeiro insight.</Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.huge }}>
+          <Text variant="title3" style={{ marginBottom: spacing.md }}>Equilíbrio muscular</Text>
+          <TouchableOpacity
+            disabled={planoTipo === 'pago'}
+            onPress={() => router.push('/upgrade')}
+            activeOpacity={planoTipo === 'pago' ? 1 : 0.8}
+          >
+            <MuscleBalanceMap theme={theme} values={muscleBalance} locked={planoTipo !== 'pago'} />
+            {planoTipo !== 'pago' && (
+              <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
+                <View style={{ backgroundColor: theme.background, borderRadius: 16, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
+                  <Ionicons name="lock-closed" size={15} color={theme.accent} />
+                  <Text variant="subhead">Análise Pro</Text>
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+        </>
       )}
 
       {/* ── TAB: Recordes ── */}

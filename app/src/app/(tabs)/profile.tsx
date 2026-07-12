@@ -143,6 +143,7 @@ export default function Profile() {
   const { user, logout } = useAuth();
   const theme = useTheme();
   const { paddingTop: safeTop, paddingBottom: safeBottom } = useAndroidInsets();
+  const isAdmin = user?.tipo === 1;
 
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -334,20 +335,22 @@ export default function Profile() {
           <Text variant="title1" color="text" style={{ flex: 1 }}>
             Perfil
           </Text>
-          <Pressable
-            onPress={() => router.push("/admin" as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Painel Admin"
-            style={({ pressed }) => ({
-              width: 40, height: 40, borderRadius: radius.lg,
-              backgroundColor: theme.accent,
-              justifyContent: "center", alignItems: "center",
-              opacity: pressed ? 0.7 : 1,
-              marginRight: spacing.xxxl,
-            })}
-          >
-            <Ionicons name="terminal" size={iconSize.sm} color="#FFFFFF" />
-          </Pressable>
+          {isAdmin && (
+            <Pressable
+              onPress={() => router.push("/admin" as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Painel Admin"
+              style={({ pressed }) => ({
+                width: 40, height: 40, borderRadius: radius.lg,
+                backgroundColor: theme.accent,
+                justifyContent: "center", alignItems: "center",
+                opacity: pressed ? 0.7 : 1,
+                marginRight: spacing.xxxl,
+              })}
+            >
+              <Ionicons name="terminal" size={iconSize.sm} color="#FFFFFF" />
+            </Pressable>
+          )}
           <Pressable
             onPress={() => router.push("/account")}
             accessibilityRole="button"

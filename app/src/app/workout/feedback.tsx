@@ -11,6 +11,7 @@ import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { planoApi } from "../../services/api";
 import PainBodyMap from "../../components/PainBodyMap";
+import { useGorila } from "../../components/gorila/GorilaContext";
 
 const EMOJI_OPTIONS = [
   { value: 1, emoji: "😫", label: "Muito Mau" },
@@ -33,6 +34,7 @@ export default function WorkoutFeedback() {
   const { safeTop } = useAndroidInsets();
   const { user } = useAuth();
   const posthog = usePostHog();
+  const gorila = useGorila();
   const params = useLocalSearchParams();
 
   const sessionId = Number(params.session_id);
@@ -85,6 +87,11 @@ export default function WorkoutFeedback() {
       setAiResponse(data);
       setSubmitted(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (data?.requer_atencao || data?.feedback_dor || (sentirScore || 5) <= 2) {
+        gorila.say(data?.feedback_dor || data?.sugestao || 'Há um sinal a acompanhar. Ajusta o próximo treino ao que o teu corpo te está a dizer.', 'angry');
+      } else {
+        gorila.celebrar('Feedback registado. Bom trabalho a ouvir o teu corpo.');
+      }
 
       // Track workout feedback submitted
       posthog.capture("workout_feedback_submitted", {

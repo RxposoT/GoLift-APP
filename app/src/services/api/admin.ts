@@ -32,6 +32,11 @@ export const adminApi = {
     total_frases: number;
   }>("/api/admin/dashboard"),
 
+  getGrowth: () => request<{
+    users: { month: string; count: number }[];
+    workouts: { month: string; count: number }[];
+  }>("/api/admin/growth"),
+
   getUsers: () => request<Array<{
     id: string; email: string; nome: string; tipo: number;
     plano: string; criado_em: string;

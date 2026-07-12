@@ -4,6 +4,7 @@ import Svg, { Path, Circle, G } from "react-native-svg";
 export type ZonaDor =
   | "cabeca"
   | "ombro_e" | "ombro_d"
+  | "braco_e" | "braco_d"
   | "peito"
   | "costas_sup"
   | "lombar"
@@ -18,6 +19,8 @@ export const ZONAS: Record<string, { label: string; lado?: "E" | "D" }> = {
   cabeca: { label: "Cabeça/Pescoço" },
   ombro_e: { label: "Ombro", lado: "E" },
   ombro_d: { label: "Ombro", lado: "D" },
+  braco_e: { label: "Braço", lado: "E" },
+  braco_d: { label: "Braço", lado: "D" },
   peito: { label: "Peito" },
   costas_sup: { label: "Costas" },
   lombar: { label: "Lombar" },
@@ -47,6 +50,8 @@ const ZONES_FRONT: { id: string; d: string }[] = [
   { id: "cabeca",    d: `M${BASE+26} ${BASE+2} c0-3,3-6,6-6 h4 c3,0,6,3,6,6 v8 c0,3-3,6-6,6 h-4 c-3,0-6-3-6-6 z` },
   { id: "ombro_e",   d: `M${BASE+8} ${BASE+18} h18 v14 h-8 c-3,0-6-2-8-5 z` },
   { id: "ombro_d",   d: `M${BASE+42} ${BASE+18} h18 v14 h-8 c-3,0-6-2-8-5 z` },
+  { id: "braco_e",   d: `M${BASE+8} ${BASE+34} h10 v24 h-10 z` },
+  { id: "braco_d",   d: `M${BASE+50} ${BASE+34} h10 v24 h-10 z` },
   { id: "peito",     d: `M${BASE+20} ${BASE+20} h28 v24 h-28 z` },
   { id: "abdominais",d: `M${BASE+22} ${BASE+48} h24 v24 h-24 z` },
   { id: "quadriceps_e", d: `M${BASE+14} ${BASE+76} h16 v32 h-6 c-3,0-6-4-8-8 z` },
@@ -60,6 +65,8 @@ const ZONES_FRONT: { id: string; d: string }[] = [
 const ZONES_BACK: { id: string; d: string }[] = [
   { id: "cabeca",    d: `M${BASE+26} ${BASE+2} c0-3,3-6,6-6 h4 c3,0,6,3,6,6 v8 c0,3-3,6-6,6 h-4 c-3,0-6-3-6-6 z` },
   { id: "costas_sup", d: `M${BASE+18} ${BASE+18} h32 v26 h-32 z` },
+  { id: "braco_e",   d: `M${BASE+8} ${BASE+34} h10 v24 h-10 z` },
+  { id: "braco_d",   d: `M${BASE+50} ${BASE+34} h10 v24 h-10 z` },
   { id: "lombar",    d: `M${BASE+20} ${BASE+48} h28 v22 h-28 z` },
   { id: "gluteos",   d: `M${BASE+18} ${BASE+72} h32 v20 h-32 z` },
   { id: "isquiotibiais_e", d: `M${BASE+14} ${BASE+94} h16 v30 h-8 c-3,0-6-2-8-5 z` },

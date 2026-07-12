@@ -1,38 +1,37 @@
 import React from "react";
-import {
-  Text as RNText,
-  TextProps as RNTextProps,
-  StyleProp,
-  TextStyle,
-} from "react-native";
-import { typography } from "../../styles/themes";
-import { useTheme } from "../../styles/theme";
+import { Text as RNText, TextProps as RNTextProps, StyleProp, TextStyle } from "react-native";
+import { typography, useTheme } from "../../styles/theme";
 
-type TextVariant = keyof typeof typography;
-type ThemeColor = keyof ReturnType<typeof useTheme>;
+type Variant = keyof typeof typography;
 
 type TextProps = RNTextProps & {
-  variant?: TextVariant;
-  color?: ThemeColor;
-  style?: StyleProp<TextStyle>;
+  variant?: Variant;
+  color?: keyof ReturnType<typeof useTheme>;
+  align?: TextStyle["textAlign"];
 };
 
+/** Aplicações da tipografia do GoLift com variant, cor e alinhamento. */
 export function Text({
   variant = "body",
   color = "text",
+  align,
   style,
-  ...props
+  children,
+  ...rest
 }: TextProps) {
   const theme = useTheme();
+  const typographyStyle = typography[variant as keyof typeof typography];
+
+  const combinedStyle: StyleProp<TextStyle> = [
+    typographyStyle,
+    { color: theme[color as keyof ReturnType<typeof useTheme>] },
+    align ? { textAlign: align } : null,
+    style,
+  ];
 
   return (
-    <RNText
-      {...props}
-      style={[
-        typography[variant],
-        { color: theme[color] },
-        style,
-      ]}
-    />
+    <RNText style={combinedStyle} {...rest}>
+      {children}
+    </RNText>
   );
 }

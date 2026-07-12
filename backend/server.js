@@ -4,6 +4,7 @@
 
 const app = require('./src/app');
 const env = require('./src/config/env');
+const { startNotificationScheduler } = require('./src/services/notificationScheduler');
 
 app.listen(env.PORT, '0.0.0.0', () => {
   console.log('\n' + '='.repeat(70));
@@ -14,4 +15,6 @@ app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`  AI (Gemini) : ${env.GEMINI_API_KEY ? '✅' : '❌'}`);
   console.log(`  Supabase  : ${env.SUPABASE_URL ? '✅' : '❌'}`);
   console.log('='.repeat(70) + '\n');
+
+  startNotificationScheduler();
 });

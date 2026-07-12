@@ -2,12 +2,12 @@ import React from "react";
 import { View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../styles/theme";
-import { spacing } from "../../styles/tokens";
 import { Text } from "./Text";
 import { Button } from "./Button";
+import { spacing } from "../../styles/tokens";
 
 type EmptyStateProps = {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle?: string;
   actionLabel?: string;
@@ -15,7 +15,7 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({
-  icon,
+  icon = "barbell-outline",
   title,
   subtitle,
   actionLabel,
@@ -24,36 +24,36 @@ export function EmptyState({
   const theme = useTheme();
 
   return (
-    <View style={{ alignItems: "center", gap: spacing.md }}>
+    <View style={{ alignItems: "center", paddingVertical: spacing.huge, paddingHorizontal: spacing.xxl }}>
       <View
         style={{
-          width: 56,
-          height: 56,
-          borderRadius: 28,
+          width: 64,
+          height: 64,
+          borderRadius: 32,
+          backgroundColor: theme.backgroundTertiary,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: theme.backgroundTertiary,
+          marginBottom: spacing.lg,
         }}
       >
-        <Ionicons name={icon} size={26} color={theme.textTertiary} />
+        <Ionicons name={icon} size={28} color={theme.textTertiary} />
       </View>
 
-      <View style={{ alignItems: "center", gap: spacing.xs }}>
-        <Text variant="headline" style={{ textAlign: "center" }}>
-          {title}
+      <Text variant="title3" align="center" style={{ marginBottom: spacing.sm }}>
+        {title}
+      </Text>
+
+      {subtitle && (
+        <Text variant="body" color="textSecondary" align="center" style={{ marginBottom: spacing.xl }}>
+          {subtitle}
         </Text>
-        {subtitle ? (
-          <Text variant="callout" color="textSecondary" style={{ textAlign: "center" }}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
+      )}
 
-      {actionLabel && onAction ? (
-        <Button variant="primary" size="sm" onPress={onAction}>
+      {actionLabel && onAction && (
+        <Button variant="primary" size="md" onPress={onAction}>
           {actionLabel}
         </Button>
-      ) : null}
+      )}
     </View>
   );
 }

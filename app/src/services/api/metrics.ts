@@ -154,4 +154,23 @@ export const metricsApi = {
         : 0,
     };
   },
+
+  getMuscleBalance: async (userId: string) => {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const { data, error } = await supabase
+      .from("workout_sets")
+      .select("repeticoes, exercise:exercises(grupo_tipo), session:workout_sessions!inner(user_id, data_fim)")
+      .eq("session.user_id", userId)
+      .gte("session.data_fim", since.toISOString())
+      .not("session.data_fim", "is", null);
+
+    if (error) return {};
+    return (data || []).reduce((totals: Record<string, number>, set: any) => {
+      const group = set.exercise?.grupo_tipo;
+      if (!group || !["Peito", "Costas", "Ombros", "Pernas", "Abdominais"].includes(group)) return totals;
+      totals[group] = (totals[group] || 0) + Math.max(1, Number(set.repeticoes) || 0);
+      return totals;
+    }, {});
+  },
 };

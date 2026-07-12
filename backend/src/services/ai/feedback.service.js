@@ -34,9 +34,26 @@ async function submitFeedback(userId, data) {
   // 3. Buscar dados da sessão e histórico de feedbacks para contexto da IA
   const { data: sessao } = await supabaseAdmin
     .from('workout_sessions')
-    .select('data_inicio, data_fim, duracao_segundos, workout:workouts(nome)')
+    .select('data_inicio, data_fim, duracao_segundos, workout:workouts(nome), workout_sets(repeticoes, peso, exercise:exercises(nome, grupo_tipo))')
     .eq('id', session_id)
     .single();
+
+  const { data: readiness } = await supabaseAdmin
+    .from('daily_readiness')
+    .select('prontidao_score, sono_horas, sono_qualidade, energia, stress, musculo_dolorido')
+    .eq('user_id', userId)
+    .order('data', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: sessoesRecentes } = await supabaseAdmin
+    .from('workout_sessions')
+    .select('data_fim, duracao_segundos, workout:workouts(nome)')
+    .eq('user_id', userId)
+    .not('data_fim', 'is', null)
+    .neq('id', session_id)
+    .order('data_fim', { ascending: false })
+    .limit(5);
 
   const { data: historico } = await supabaseAdmin
     .from('workout_feedback')
@@ -47,6 +64,13 @@ async function submitFeedback(userId, data) {
     .limit(10);
 
   // 4. Construir prompt com feedback atual + histórico para personalização
+  const seriesResumo = (sessao?.workout_sets || [])
+    .map((serie) => `${serie.exercise?.nome || 'Exercício'}: ${serie.repeticoes || 0} reps × ${serie.peso || 0}kg`)
+    .join('; ') || 'sem séries registadas';
+  const historicoTreinos = (sessoesRecentes || [])
+    .map((treino) => `${treino.workout?.nome || 'Treino'} (${Math.round((treino.duracao_segundos || 0) / 60)} min)`)
+    .join(', ') || 'sem sessões anteriores';
+
   const prompt = `O utilizador acabou de terminar um treino e reportou o seguinte feedback:
 
 Sessão: "${sessao?.workout?.nome || 'Treino'}"
@@ -57,6 +81,16 @@ Zonas de dor: ${dor_zones?.length ? dor_zones.join(', ') : 'nenhuma'}
 Intensidade da dor: ${dor_intensidade || 0}/5
 Notas: "${notas || '—'}"
 
+Séries executadas: ${seriesResumo}
+
+Check-in mais recente:
+- Prontidão: ${readiness?.prontidao_score || 'não disponível'}/10
+- Sono: ${readiness?.sono_horas || '?'}h, qualidade ${readiness?.sono_qualidade || '?'}/5
+- Energia: ${readiness?.energia || '?'}/5 | Stress: ${readiness?.stress || '?'}/5
+- Músculos já doridos: ${readiness?.musculo_dolorido?.join(', ') || 'nenhum'}
+
+Sessões recentes: ${historicoTreinos}
+
 Últimos feedbacks do utilizador:
 ${historico?.map((h, i) => `  ${i + 1}. Sentir: ${h.sentir_score}/5, Dor: ${h.dor_zones?.join(', ') || 'nenhuma'}`).join('\n') || '  (sem histórico)'}
 
@@ -66,7 +100,8 @@ Responde APENAS com JSON:
 {
   "mensagem": "resposta motivacional personalizada",
   "sugestao": "sugestão concreta se aplicável, ou null",
-  "feedback_dor": "observação sobre padrão de dor se encontrado, ou null"
+  "feedback_dor": "observação sobre padrão de dor se encontrado, ou null",
+  "requer_atencao": true ou false
 }`;
 
   // 5. Chamar Gemini — se falhar, devolver resposta genérica amigável
