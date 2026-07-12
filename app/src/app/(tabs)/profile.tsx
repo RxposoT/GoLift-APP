@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -10,7 +10,7 @@ import {
   Switch,
 } from "react-native";
 import { Text, Card, Button, SectionHeader } from "../../components/ui";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -80,39 +80,38 @@ function IMCBar({ imc }: { imc: number }) {
   const imcCategory = getIMCCategory(imc);
 
   return (
-    <View>
-      <View style={{ flexDirection: "row", height: 8, borderRadius: 4, overflow: "hidden", marginBottom: spacing.sm }}>
-        {IMC_SEGMENTS.map((seg) => (
-          <View
-            key={seg.from}
-            style={{ width: `${((seg.to - seg.from) / IMC_TOTAL) * 100}%` as any, backgroundColor: seg.color }}
-          />
-        ))}
-      </View>
-      <View style={{ position: "relative", height: 14, marginBottom: spacing.sm }}>
+    <View style={{ marginTop: spacing.xs }}>
+      <View style={{ height: 20, justifyContent: "center", position: "relative" }}>
+        {/* Continuous track */}
+        <View style={{ flexDirection: "row", height: 6, borderRadius: 3, overflow: "hidden", width: "100%" }}>
+          {IMC_SEGMENTS.map((seg) => (
+            <View
+              key={seg.from}
+              style={{ width: `${((seg.to - seg.from) / IMC_TOTAL) * 100}%` as any, backgroundColor: seg.color }}
+            />
+          ))}
+        </View>
+        {/* Glow indicator node */}
         <View style={{
           position: "absolute",
           left: `${pct}%` as any,
           transform: [{ translateX: -6 }],
-          top: 0,
           width: 12,
           height: 12,
           borderRadius: 6,
-          backgroundColor: imcCategory.color,
-          borderWidth: 2,
-          borderColor: theme.backgroundSecondary,
+          backgroundColor: theme.backgroundSecondary,
+          borderWidth: 3,
+          borderColor: imcCategory.color,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3,
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 3,
         }} />
       </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text variant="caption" color="textTertiary" style={{ fontSize: 10 }}>14</Text>
-        <Text variant="footnote" style={{ color: imcCategory.color, fontWeight: "700" }}>
-          {imc.toFixed(1)} — {imcCategory.label}
-        </Text>
-        <Text variant="caption" color="textTertiary" style={{ fontSize: 10 }}>42+</Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: spacing.xs }}>
+        <Text variant="caption" color="textTertiary" style={{ fontSize: 9 }}>14 (Mín.)</Text>
+        <Text variant="caption" color="textTertiary" style={{ fontSize: 9 }}>42 (Máx.)</Text>
       </View>
     </View>
   );
@@ -159,9 +158,11 @@ export default function Profile() {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const heroOpacity = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    if (user?.id) loadData();
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) loadData();
+    }, [user?.id])
+  );
 
   async function loadData() {
     setLoading(true);
@@ -257,6 +258,26 @@ export default function Profile() {
     const h = profile.altura / 100;
     return profile.peso / (h * h);
   }, [profile]);
+
+  const exercisesGrouped = useMemo(() => {
+    return Object.entries(
+      records.reduce((acc: any, rec: any) => {
+        const nome = rec.nome_exercicio || rec.exercicio || rec.exercise || "";
+        if (!acc[nome]) acc[nome] = [];
+        acc[nome].push(rec);
+        return acc;
+      }, {})
+    ).map(([nome, recs]) => {
+      const sorted = [...(recs as any[])].sort((a, b) => (b.peso || b.weight) - (a.peso || a.weight));
+      const best = sorted[0];
+      return {
+        nome,
+        id_exercicio: best.exercise_id || best.id_exercicio || best.exercicio_id,
+        peso: best.peso || best.weight,
+        data: best.data_serie || best.data || best.created_at,
+      };
+    }).sort((a, b) => b.peso - a.peso);
+  }, [records]);
 
   if (loading) {
     return <ProfileScreenSkeleton />;
@@ -400,24 +421,60 @@ export default function Profile() {
         {lastSession && (
           <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.xxl }}>
             <SectionHeader title="Última Sessão" />
-            <Card padding={0} style={{ overflow: "hidden", flexDirection: "row" }}>
-              <View style={{ width: 4, backgroundColor: theme.accentGreen }} />
-              <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.lg, flexDirection: "row", alignItems: "center" }}>
+            <Card padding={0} style={{ overflow: "hidden" }}>
+              <View style={{ padding: spacing.lg, flexDirection: "row", alignItems: "center" }}>
+                <View style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: theme.accent + "15",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: spacing.md,
+                }}>
+                  <Ionicons name="barbell-outline" size={24} color={theme.accent} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="body" color="text" style={{ fontWeight: "700", marginBottom: spacing.xxs }}>
                     {lastSession.nome_treino || lastSession.nome || "Treino"}
                   </Text>
-                  <Text variant="subhead" color="textSecondary">
-                    {formatRelativeDate(lastSession.data_fim || lastSession.data_inicio)}
-                    {(lastSession.duracao_segundos || 0) > 0 ? ` · ${formatTime(lastSession.duracao_segundos)}` : ""}
-                  </Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
+                      <Text variant="subhead" color="textSecondary">
+                        {formatRelativeDate(lastSession.data_fim || lastSession.data_inicio)}
+                      </Text>
+                    </View>
+                    {(lastSession.duracao_segundos || 0) > 0 && (
+                      <>
+                        <Text variant="subhead" color="textSecondary">·</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+                          <Text variant="subhead" color="textSecondary">
+                            {formatTime(lastSession.duracao_segundos)}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                    {(lastSession.num_exercicios || 0) > 0 && (
+                      <>
+                        <Text variant="subhead" color="textSecondary">·</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Ionicons name="fitness-outline" size={12} color={theme.textSecondary} />
+                          <Text variant="subhead" color="textSecondary">
+                            {lastSession.num_exercicios} séries
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
                 </View>
                 <Button
                   variant="primary"
                   size="sm"
                   onPress={() => lastSession.id_treino && router.push({ pathname: "/workout/[id]", params: { id: lastSession.id_treino } })}
                 >
-                  ▶ Recomeçar
+                  Repetir
                 </Button>
               </View>
             </Card>
@@ -426,51 +483,75 @@ export default function Profile() {
 
         <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.xxl }}>
           <SectionHeader title="Dados Físicos" />
-          <Card padding={0} style={{ overflow: "hidden" }}>
-            {[
-              { label: "Idade",  value: profile?.idade  ? `${profile.idade} anos` : null },
-              { label: "Peso",   value: profile?.peso   ? `${profile.peso} kg`    : null },
-              { label: "Altura", value: profile?.altura ? `${profile.altura} cm`  : null },
-            ].map((item) => (
-              <View key={item.label} style={{
-                flexDirection: "row",
-                alignItems: "center",
-                paddingHorizontal: spacing.lg,
-                paddingVertical: spacing.lg,
-                borderBottomWidth: 1,
-                borderBottomColor: theme.backgroundTertiary,
-              }}>
-                <Text variant="callout" color="textSecondary" style={{ flex: 1 }}>{item.label}</Text>
-                <Text variant="callout" style={{ color: item.value ? theme.text : theme.textTertiary, fontWeight: "600" }}>
-                  {item.value ?? "Não definido"}
-                </Text>
+          
+          <View style={{ flexDirection: "row", gap: spacing.md, marginBottom: spacing.md }}>
+            <Card padding={spacing.md} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.backgroundTertiary, justifyContent: "center", alignItems: "center", marginBottom: spacing.sm }}>
+                <Ionicons name="scale-outline" size={18} color={theme.textSecondary} />
               </View>
-            ))}
-            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: imc ? spacing.lg : spacing.md }}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: imc ? spacing.lg : 0 }}>
-                <Text variant="callout" color="textSecondary" style={{ flex: 1 }}>IMC</Text>
-                {!imc && (
-                  <Text variant="subhead" style={{ color: theme.textTertiary, fontWeight: "600" }}>
-                    Define peso e altura
+              <Text variant="subhead" color="textSecondary" style={{ marginBottom: spacing.xxs }}>Peso</Text>
+              <Text variant="title3" style={{ color: theme.text }}>
+                {profile?.peso ? `${profile.peso} kg` : "—"}
+              </Text>
+            </Card>
+
+            <Card padding={spacing.md} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.backgroundTertiary, justifyContent: "center", alignItems: "center", marginBottom: spacing.sm }}>
+                <Ionicons name="resize-outline" size={18} color={theme.textSecondary} />
+              </View>
+              <Text variant="subhead" color="textSecondary" style={{ marginBottom: spacing.xxs }}>Altura</Text>
+              <Text variant="title3" style={{ color: theme.text }}>
+                {profile?.altura ? `${profile.altura} cm` : "—"}
+              </Text>
+            </Card>
+
+            <Card padding={spacing.md} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.backgroundTertiary, justifyContent: "center", alignItems: "center", marginBottom: spacing.sm }}>
+                <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} />
+              </View>
+              <Text variant="subhead" color="textSecondary" style={{ marginBottom: spacing.xxs }}>Idade</Text>
+              <Text variant="title3" style={{ color: theme.text }}>
+                {profile?.idade ? `${profile.idade} anos` : "—"}
+              </Text>
+            </Card>
+          </View>
+
+          {imc && (
+            <Card padding={spacing.lg} style={{ marginTop: spacing.xs }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm }}>
+                <View>
+                  <Text variant="subhead" color="textSecondary">Índice de Massa Corporal (IMC)</Text>
+                  <Text variant="title2" style={{ color: theme.text, marginTop: spacing.xxs }}>
+                    {imc.toFixed(1)}
                   </Text>
-                )}
+                </View>
+                <View style={{
+                  backgroundColor: getIMCCategory(imc).color + "18",
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.xs,
+                  borderRadius: radius.md,
+                }}>
+                  <Text variant="subhead" style={{ color: getIMCCategory(imc).color, fontWeight: "700" }}>
+                    {getIMCCategory(imc).label}
+                  </Text>
+                </View>
               </View>
-              {imc ? <IMCBar imc={imc} /> : null}
-            </View>
-          </Card>
+              <IMCBar imc={imc} />
+            </Card>
+          )}
         </View>
 
         <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.xxl }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.lg }}>
             <SectionHeader title="Melhores Recordes" />
-            {records.length > 3 && (
+            {exercisesGrouped.length > 3 && (
               <Pressable onPress={() => setShowAllRecords(true)} accessibilityRole="button" accessibilityLabel="Ver todos os recordes">
-                <Text variant="subhead" style={{ color: theme.accent, fontWeight: "600" }}>Ver todos ({records.length})</Text>
+                <Text variant="subhead" style={{ color: theme.accent, fontWeight: "600" }}>Ver todos ({exercisesGrouped.length})</Text>
               </Pressable>
             )}
           </View>
 
-          {records.length === 0 ? (
+          {exercisesGrouped.length === 0 ? (
             <Card padding={spacing.xxxl} style={{ alignItems: "center" }}>
               <Ionicons name="medal" size={iconSize.xxl} color={theme.textSecondary} style={{ marginBottom: spacing.md }} />
               <Text variant="headline" color="text" style={{ marginBottom: spacing.sm, textAlign: "center" }}>Ainda sem recordes</Text>
@@ -483,53 +564,68 @@ export default function Profile() {
             </Card>
           ) : (
             <View style={{ gap: spacing.md }}>
-              {records.slice(0, 3).map((record, i) => {
-                const medalColors = [AMBER, "#94a3b8", "#cd7f32"];
-                const color = medalColors[i];
-                const dateStr = formatRelativeDate(record.data_recorde || record.data || record.created_at);
-                const nome = record.nome_exercicio || record.exercicio || record.exercise || "";
-                const exercicioId = record.id_exercicio || record.exercicio_id;
+              {exercisesGrouped.slice(0, 3).map((record, i) => {
+                const medalColors = [AMBER, "#8E8E93", "#cd7f32"];
+                const color = medalColors[i] || theme.textSecondary;
+                const dateStr = formatRelativeDate(record.data);
+                const nome = record.nome;
+                const exercicioId = record.id_exercicio;
 
                 return (
-                  <Card key={i} padding={0} style={{ overflow: "hidden" }}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Recorde de ${nome}`}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        if (exercicioId) {
-                          router.push({ pathname: "/exercise-progress/[id]", params: { id: String(exercicioId), nome } });
-                        }
-                      }}
-                      style={({ pressed }) => ({
+                  <Pressable
+                    key={i}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Recorde de ${nome}`}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (exercicioId) {
+                        router.push({ pathname: "/exercise-progress/[id]", params: { id: String(exercicioId), nome } });
+                      }
+                    }}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                  >
+                    <Card
+                      style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        paddingHorizontal: spacing.lg,
-                        paddingVertical: spacing.lg,
-                        opacity: pressed ? 0.6 : 1,
-                      })}
+                        padding: 16,
+                        borderWidth: 2,
+                        borderColor: theme.backgroundTertiary,
+                      }}
                     >
-                      <View style={{ width: 26, alignItems: "center", marginRight: spacing.lg }}>
-                        <Ionicons name="medal" size={22} color={color} />
+                      <View style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        backgroundColor: color + "18",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginRight: 16,
+                      }}>
+                        <Ionicons name="trophy" size={22} color={color} />
                       </View>
 
                       <View style={{ flex: 1 }}>
-                        <Text variant="headline" color="text" style={{ fontWeight: "500" }} numberOfLines={1}>
+                        <Text style={{ color: theme.text, fontWeight: "700", fontSize: 15 }} numberOfLines={1}>
                           {nome}
                         </Text>
                         {dateStr && (
-                          <Text variant="footnote" color="textSecondary" style={{ marginTop: spacing.xxs }}>{dateStr}</Text>
+                          <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
+                            Superado a {dateStr}
+                          </Text>
                         )}
                       </View>
 
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text variant="title3" style={{ color, fontSize: 22 }}>
-                          {record.peso || record.weight}
+                        <Text style={{ color: theme.accent, fontSize: 18, fontWeight: "800", letterSpacing: -0.5 }}>
+                          {record.peso} kg
                         </Text>
-                        <Text variant="caption" color="textSecondary" style={{ marginTop: -2 }}>kg</Text>
+                        <Text style={{ color: theme.textTertiary, fontSize: 10, marginTop: 2, fontWeight: "600" }}>
+                          RECORD
+                        </Text>
                       </View>
-                    </Pressable>
-                  </Card>
+                    </Card>
+                  </Pressable>
                 );
               })}
             </View>
@@ -537,16 +633,27 @@ export default function Profile() {
         </View>
 
         <View style={{ paddingHorizontal: spacing.xxl, marginBottom: spacing.xxl }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.lg }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.xs }}>
             <SectionHeader title="Conquistas" />
-            <Text variant="footnote" color="textTertiary">
-              {unlockedBadges.length}/{badges.length} desbloqueadas
+            <Text variant="footnote" color="textSecondary" style={{ fontWeight: "600" }}>
+              {unlockedBadges.length}/{badges.length}
             </Text>
           </View>
+          
+          {/* Unlocked progress bar */}
+          <View style={{ height: 6, backgroundColor: theme.backgroundTertiary, borderRadius: 3, overflow: "hidden", marginBottom: spacing.lg }}>
+            <View style={{
+              width: `${(unlockedBadges.length / badges.length) * 100}%`,
+              height: "100%",
+              backgroundColor: theme.accent,
+              borderRadius: 3,
+            }} />
+          </View>
+
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.xxs, paddingVertical: spacing.xs }}
+            contentContainerStyle={{ gap: spacing.md, paddingHorizontal: spacing.xxs, paddingVertical: spacing.xs }}
           >
             {orderedBadges.map((badge) => (
               <Pressable
@@ -555,29 +662,81 @@ export default function Profile() {
                 accessibilityRole="button"
                 accessibilityLabel={badge.name}
                 style={({ pressed }) => ({
-                  width: 100,
-                  height: 120,
+                  width: 96,
                   backgroundColor: theme.backgroundSecondary,
-                  borderRadius: radius.lg,
-                  paddingVertical: spacing.lg,
-                  paddingHorizontal: spacing.sm,
+                  borderRadius: radius.xl,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.xs,
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: pressed ? 0.75 : badge.unlocked ? 1 : 0.4,
+                  opacity: pressed ? 0.8 : 1,
+                  shadowColor: badge.unlocked ? badge.color : "transparent",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: badge.unlocked ? 0.15 : 0,
+                  shadowRadius: 6,
+                  elevation: badge.unlocked ? 2 : 0,
                 })}
               >
-                <View style={{ width: 48, height: 48, borderRadius: radius.lg, backgroundColor: badge.color + "18", justifyContent: "center", alignItems: "center", marginBottom: spacing.sm }}>
-                  <Ionicons name={badge.icon as any} size={22} color={badge.color} />
-                </View>
-                <Text variant="caption" style={{ color: badge.unlocked ? theme.text : theme.textTertiary, textAlign: "center" }} numberOfLines={2}>
-                  {badge.name}
+                {badge.unlocked ? (
+                  <View style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: badge.color + "12",
+                    borderWidth: 2,
+                    borderColor: badge.color,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginBottom: spacing.sm,
+                    shadowColor: badge.color,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3,
+                  }}>
+                    <Ionicons name={badge.icon as any} size={24} color={badge.color} />
+                  </View>
+                ) : (
+                  <View style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: theme.backgroundTertiary,
+                    borderWidth: 1.5,
+                    borderColor: theme.border,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginBottom: spacing.sm,
+                    position: "relative",
+                  }}>
+                    <Ionicons name={badge.icon as any} size={24} color={theme.textTertiary} style={{ opacity: 0.6 }} />
+                    <View style={{
+                      position: "absolute",
+                      bottom: -2,
+                      right: -2,
+                      backgroundColor: theme.backgroundSecondary,
+                      borderRadius: 8,
+                      width: 16,
+                      height: 16,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      borderWidth: 1.5,
+                      borderColor: theme.border,
+                    }}>
+                      <Ionicons name="lock-closed" size={10} color={theme.textTertiary} />
+                    </View>
+                  </View>
+                )}
+                <Text variant="subhead" style={{ color: badge.unlocked ? theme.text : theme.textTertiary, textAlign: "center", fontWeight: "600" }} numberOfLines={1}>
+                  {badge.name.split(" ")[0]}
+                </Text>
+                <Text variant="footnote" style={{ color: theme.textTertiary, textAlign: "center", fontSize: 10 }} numberOfLines={1}>
+                  {badge.name.split(" ").slice(1).join(" ") || " "}
                 </Text>
               </Pressable>
             ))}
           </ScrollView>
         </View>
-
-
 
         <Text variant="caption" color="textTertiary" style={{ textAlign: "center", marginTop: spacing.xl, marginBottom: spacing.sm }}>
           GoLift v1.0.0
@@ -601,16 +760,17 @@ export default function Profile() {
             </View>
             <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.xxl, paddingBottom: spacing.lg }}>
               <Card padding={0} style={{ overflow: "hidden" }}>
-                {records.map((record, i) => {
-                  const mc = [AMBER, "#94a3b8", "#cd7f32"];
-                  const dateStr = formatRelativeDate(record.data_recorde || record.data || record.created_at);
+                {exercisesGrouped.map((record, i) => {
+                  const mc = [AMBER, "#8E8E93", "#cd7f32"];
+                  const color = mc[i] || theme.textSecondary;
+                  const dateStr = formatRelativeDate(record.data);
                   return (
                     <Pressable
                       key={i}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        const exercicioId = record.id_exercicio || record.exercicio_id;
-                        const nome = record.nome_exercicio || record.exercicio || record.exercise || "";
+                        const exercicioId = record.id_exercicio;
+                        const nome = record.nome;
                         if (exercicioId) {
                           router.push({ pathname: "/exercise-progress/[id]", params: { id: String(exercicioId), nome } });
                           setShowAllRecords(false);
@@ -621,27 +781,37 @@ export default function Profile() {
                         alignItems: "center",
                         paddingHorizontal: spacing.lg,
                         paddingVertical: spacing.md,
-                        borderBottomWidth: i < records.length - 1 ? 1 : 0,
+                        borderBottomWidth: i < exercisesGrouped.length - 1 ? 1 : 0,
                         borderBottomColor: theme.backgroundSecondary,
-                        opacity: pressed ? 0.75 : 1,
+                        backgroundColor: pressed ? theme.backgroundTertiary : "transparent",
                       })}
                     >
-                      <View style={{ width: 28, height: 28, borderRadius: spacing.sm, backgroundColor: (mc[i] || theme.accent) + "18", justifyContent: "center", alignItems: "center", marginRight: spacing.lg }}>
+                      <View style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: color + (i < 3 ? "15" : "05"),
+                        justifyContent: "center",
+                        alignItems: "center",
+                        marginRight: spacing.md,
+                        borderWidth: 1.5,
+                        borderColor: i < 3 ? color + "30" : "transparent",
+                      }}>
                         {i < 3 ? (
-                          <Ionicons name="trophy" size={iconSize.xs} color={mc[i]} />
+                          <Ionicons name="trophy" size={14} color={color} />
                         ) : (
-                          <Text variant="footnote" style={{ color: theme.textSecondary, fontWeight: "800" }}>#{i + 1}</Text>
+                          <Text variant="subhead" style={{ color: theme.textSecondary, fontWeight: "700" }}>{i + 1}</Text>
                         )}
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text variant="callout" color="text" style={{ fontWeight: "500", marginBottom: spacing.xxs }}>
-                          {record.nome_exercicio || record.exercicio || record.exercise}
+                        <Text variant="callout" color="text" style={{ fontWeight: "600", marginBottom: spacing.xxs }}>
+                          {record.nome}
                         </Text>
                         {dateStr && <Text variant="footnote" color="textTertiary">{dateStr}</Text>}
                       </View>
                       <View style={{ alignItems: "flex-end", marginRight: spacing.sm }}>
-                        <Text variant="headline" style={{ color: mc[i] || theme.accent, fontWeight: "800" }}>
-                          {record.peso || record.weight}
+                        <Text variant="headline" style={{ color: i < 3 ? color : theme.text, fontWeight: "800" }}>
+                          {record.peso}
                         </Text>
                         <Text variant="footnote" color="textSecondary">kg</Text>
                       </View>
@@ -662,27 +832,70 @@ export default function Profile() {
         >
           <Pressable onPress={(e) => e.stopPropagation()}>
             <Card style={{ alignItems: "center", width: 280, padding: radius.xxl }}>
-              <View style={{ width: 72, height: 72, borderRadius: 22, backgroundColor: (selectedBadge?.color || "#888") + "18", justifyContent: "center", alignItems: "center", marginBottom: spacing.md }}>
-                <Ionicons name={(selectedBadge?.icon as any) || "help"} size={36} color={selectedBadge?.color || "#888"} />
+              <View style={{
+                backgroundColor: selectedBadge?.unlocked ? theme.accentGreen + "15" : theme.backgroundTertiary,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.xs,
+                borderRadius: radius.full,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.xs,
+                marginBottom: spacing.lg,
+              }}>
+                <Ionicons
+                  name={selectedBadge?.unlocked ? "checkmark-circle" : "lock-closed"}
+                  size={12}
+                  color={selectedBadge?.unlocked ? theme.accentGreen : theme.textSecondary}
+                />
+                <Text variant="caption" style={{ color: selectedBadge?.unlocked ? theme.accentGreen : theme.textSecondary, fontSize: 10 }}>
+                  {selectedBadge?.unlocked ? "Desbloqueado" : "Bloqueado"}
+                </Text>
               </View>
+
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: (selectedBadge?.color || "#888") + "12",
+                borderWidth: 2,
+                borderColor: selectedBadge?.unlocked ? selectedBadge.color : theme.border,
+                justifyContent: "center",
+                alignItems: "center",
+                marginBottom: spacing.lg,
+                shadowColor: selectedBadge?.unlocked ? selectedBadge.color : "transparent",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: selectedBadge?.unlocked ? 0.25 : 0,
+                shadowRadius: 10,
+                elevation: selectedBadge?.unlocked ? 6 : 0,
+              }}>
+                <Ionicons
+                  name={(selectedBadge?.icon as any) || "help"}
+                  size={36}
+                  color={selectedBadge?.unlocked ? selectedBadge.color : theme.textTertiary}
+                  style={{ opacity: selectedBadge?.unlocked ? 1 : 0.6 }}
+                />
+              </View>
+
               <Text variant="title3" color="text" style={{ marginBottom: spacing.sm, textAlign: "center" }}>
                 {selectedBadge?.name}
               </Text>
-              <Text variant="callout" color="textSecondary" style={{ textAlign: "center", lineHeight: 21, marginBottom: spacing.lg }}>
+              
+              <Text variant="callout" color="textSecondary" style={{ textAlign: "center", lineHeight: 21, marginBottom: spacing.xl }}>
                 {selectedBadge?.unlocked ? selectedBadge.description : selectedBadge?.lockHint}
               </Text>
+
               {selectedBadge?.unlocked && selectedBadge.unlockedAt && (
-                <Text variant="footnote" color="textTertiary" style={{ marginBottom: spacing.md }}>
-                  Desbloqueada {formatRelativeDate(selectedBadge.unlockedAt)}
-                </Text>
-              )}
-              {!selectedBadge?.unlocked && (
-                <View style={{ backgroundColor: theme.backgroundTertiary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm }}>
-                  <Ionicons name="lock-closed" size={12} color={theme.textTertiary} />
-                  <Text variant="footnote" color="textTertiary" style={{ fontWeight: "600" }}>Bloqueada</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs, marginBottom: spacing.xl }}>
+                  <Ionicons name="calendar-outline" size={12} color={theme.textTertiary} />
+                  <Text variant="footnote" color="textTertiary">
+                    Conquistada {formatRelativeDate(selectedBadge.unlockedAt)}
+                  </Text>
                 </View>
               )}
-              <Button variant="primary" size="md" onPress={() => setSelectedBadge(null)}>Fechar</Button>
+
+              <Button variant="primary" size="md" style={{ width: "100%" }} onPress={() => setSelectedBadge(null)}>
+                Fechar
+              </Button>
             </Card>
           </Pressable>
         </Pressable>
