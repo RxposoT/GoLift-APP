@@ -771,7 +771,7 @@ export default function WorkoutActive() {
 
       <Animated.ScrollView
         style={{ flex: 1, opacity: contentFade }}
-        contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }}
+        contentContainerStyle={{ paddingBottom: 140, paddingTop: 16 }}
       >
         {exercicios.map((exercicio: ExercicioAtivo) => {
           const concluidas = exercicio.series.filter((s: any) => s.concluida).length;
@@ -780,15 +780,24 @@ export default function WorkoutActive() {
             <View
               key={exercicio.id}
               style={{
-                backgroundColor: theme.backgroundSecondary,
+                backgroundColor: todasConcluidas ? (theme.accentGreen || "#34C759") : theme.backgroundTertiary,
                 borderRadius: 20,
                 marginHorizontal: 16,
                 marginBottom: 14,
-                overflow: "hidden",
-                flexDirection: "row",
               }}
             >
-              <View style={{ width: 4, backgroundColor: todasConcluidas ? theme.accentGreen : theme.accent }} />
+              <View
+                style={{
+                  backgroundColor: theme.backgroundSecondary,
+                  borderRadius: 20,
+                  borderWidth: 2,
+                  borderColor: todasConcluidas ? (theme.accentGreen || "#34C759") : theme.backgroundTertiary,
+                  overflow: "hidden",
+                  flexDirection: "row",
+                  transform: [{ translateY: -4 }],
+                  marginBottom: 4,
+                }}
+              >
               <View style={{ flex: 1, padding: 16 }}>
                 {/* ── Exercise Header ── */}
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
@@ -848,130 +857,35 @@ export default function WorkoutActive() {
                 </View>
 
                 {/* ── Add Series Button ── */}
-                <Pressable
+                <Button
+                  variant="duo"
+                  size="sm"
                   onPress={() => adicionarSerie(exercicio.id)}
                   accessibilityLabel={`Adicionar série a ${exercicio.nome}`}
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    marginTop: 10,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    borderWidth: 1.5,
-                    borderStyle: "dashed",
-                    borderColor: theme.backgroundTertiary,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
+                  style={{ marginTop: 10, alignSelf: "center" }}
                 >
-                  <Ionicons name="add-circle-outline" size={18} color={theme.accent} />
-                  <Text style={{ color: theme.accent, fontSize: 13, fontWeight: "700" }}>Adicionar Série</Text>
-                </Pressable>
+                  + Adicionar Série
+                </Button>
+              </View>
               </View>
             </View>
           );
         })}
       </Animated.ScrollView>
 
-      {/* ── Barra de progresso global (animada) ── */}
-      <View
-        style={{
-          height: 4,
-          backgroundColor: theme.backgroundTertiary,
-          marginHorizontal: 24,
-          borderRadius: 2,
-          marginBottom: 6,
-          overflow: "hidden",
-        }}
-      >
-        <Animated.View style={{ height: 4, width: progressWidth, backgroundColor: theme.accent, borderRadius: 2 }} />
-      </View>
-
-      {/* ── Banner de descanso ── */}
-      {restTimer !== null && (
-        <Animated.View
-          style={{
-            marginHorizontal: 24,
-            marginTop: 10,
-            marginBottom: 8,
-            opacity: restBannerAnim,
-            transform: [
-              {
-                translateY: restBannerAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
-              },
-            ],
-          }}
-        >
-          <Pressable
-            onPress={skipRestTimer}
-            accessibilityLabel={`Descanso: ${restTimer} segundos restantes. Toca para saltar.`}
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              borderRadius: 24,
-              backgroundColor: "#0B1E33",
-              padding: 18,
-              opacity: pressed ? 0.85 : 1,
-              shadowColor: "#007AFF",
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.25,
-              shadowRadius: 18,
-              elevation: 10,
-              alignItems: "center",
-              justifyContent: "center",
-            })}
-          >
-            <View style={{ marginBottom: 6 }}>
-              <RestRing restTimer={restTimer} restDefault={restDefault} />
-            </View>
-
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Ionicons name="timer-outline" size={20} color="#7AB8FF" style={{ marginRight: 6 }} />
-                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 0.2 }}>Descanso</Text>
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <TouchableOpacity
-                  onPress={() => ajustarRestTimer(-15)}
-                  accessibilityLabel="Tirar 15 segundos ao descanso"
-                  hitSlop={8}
-                  style={{ paddingHorizontal: 8, paddingVertical: 4 }}
-                >
-                  <Text style={{ color: "#7AB8FF", fontSize: 13, fontWeight: "700" }}>-15s</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => ajustarRestTimer(15)}
-                  accessibilityLabel="Adicionar 15 segundos ao descanso"
-                  hitSlop={8}
-                  style={{ paddingHorizontal: 8, paddingVertical: 4 }}
-                >
-                  <Text style={{ color: "#7AB8FF", fontSize: 13, fontWeight: "700" }}>+15s</Text>
-                </TouchableOpacity>
-                <Ionicons name="arrow-forward-circle" size={22} color="#fff" style={{ marginLeft: 4 }} />
-              </View>
-            </View>
-          </Pressable>
-        </Animated.View>
-      )}
 
       {/* ── Footer fixo ── */}
       <View
         style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
           paddingHorizontal: 20,
-          paddingTop: 8,
+          paddingTop: 12,
           paddingBottom: 24,
-          backgroundColor: theme.background,
-          borderTopWidth: 1,
-          borderTopColor: theme.backgroundTertiary,
         }}
       >
-        {totalSeries > 0 && (
-          <View style={{ height: 4, backgroundColor: theme.backgroundTertiary, borderRadius: 2, marginBottom: 10, overflow: "hidden" }}>
-            <Animated.View style={{ height: 4, width: progressWidth, backgroundColor: theme.accent, borderRadius: 2 }} />
-          </View>
-        )}
         <Button
           variant="duo"
           size="lg"

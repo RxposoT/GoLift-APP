@@ -1,5 +1,7 @@
 import { View, Text, Pressable } from "react-native";
-import Svg, { Path, Circle, G } from "react-native-svg";
+import Svg, { Path, G } from "react-native-svg";
+import { useTheme } from "../styles/theme";
+import { CORPO_FRENTE_PATHS, CORPO_COSTAS_PATHS } from "./anatomy/AnatomyPaths";
 
 export type ZonaDor =
   | "cabeca"
@@ -42,74 +44,83 @@ interface PainBodyMapProps {
   view: "front" | "back";
 }
 
-const BASE = 24;
-const COR_FILL = "#FF3B30";
-const COR_STROKE = "#555";
-
-const ZONES_FRONT: { id: string; d: string }[] = [
-  { id: "cabeca",    d: `M${BASE+26} ${BASE+2} c0-3,3-6,6-6 h4 c3,0,6,3,6,6 v8 c0,3-3,6-6,6 h-4 c-3,0-6-3-6-6 z` },
-  { id: "ombro_e",   d: `M${BASE+8} ${BASE+18} h18 v14 h-8 c-3,0-6-2-8-5 z` },
-  { id: "ombro_d",   d: `M${BASE+42} ${BASE+18} h18 v14 h-8 c-3,0-6-2-8-5 z` },
-  { id: "braco_e",   d: `M${BASE+8} ${BASE+34} h10 v24 h-10 z` },
-  { id: "braco_d",   d: `M${BASE+50} ${BASE+34} h10 v24 h-10 z` },
-  { id: "peito",     d: `M${BASE+20} ${BASE+20} h28 v24 h-28 z` },
-  { id: "abdominais",d: `M${BASE+22} ${BASE+48} h24 v24 h-24 z` },
-  { id: "quadriceps_e", d: `M${BASE+14} ${BASE+76} h16 v32 h-6 c-3,0-6-4-8-8 z` },
-  { id: "quadriceps_d", d: `M${BASE+38} ${BASE+76} h16 v32 h-6 c-3,0-6-4-8-8 z` },
-  { id: "joelho_e",  d: `M${BASE+16} ${BASE+110} h12 v14 h-12 z` },
-  { id: "joelho_d",  d: `M${BASE+40} ${BASE+110} h12 v14 h-12 z` },
-  { id: "gemeos_e",  d: `M${BASE+16} ${BASE+126} h12 v22 h-12 z` },
-  { id: "gemeos_d",  d: `M${BASE+40} ${BASE+126} h12 v22 h-12 z` },
-];
-
-const ZONES_BACK: { id: string; d: string }[] = [
-  { id: "cabeca",    d: `M${BASE+26} ${BASE+2} c0-3,3-6,6-6 h4 c3,0,6,3,6,6 v8 c0,3-3,6-6,6 h-4 c-3,0-6-3-6-6 z` },
-  { id: "costas_sup", d: `M${BASE+18} ${BASE+18} h32 v26 h-32 z` },
-  { id: "braco_e",   d: `M${BASE+8} ${BASE+34} h10 v24 h-10 z` },
-  { id: "braco_d",   d: `M${BASE+50} ${BASE+34} h10 v24 h-10 z` },
-  { id: "lombar",    d: `M${BASE+20} ${BASE+48} h28 v22 h-28 z` },
-  { id: "gluteos",   d: `M${BASE+18} ${BASE+72} h32 v20 h-32 z` },
-  { id: "isquiotibiais_e", d: `M${BASE+14} ${BASE+94} h16 v30 h-8 c-3,0-6-2-8-5 z` },
-  { id: "isquiotibiais_d", d: `M${BASE+38} ${BASE+94} h16 v30 h-8 c-3,0-6-2-8-5 z` },
-  { id: "gemeos_e",  d: `M${BASE+16} ${BASE+126} h12 v22 h-12 z` },
-  { id: "gemeos_d",  d: `M${BASE+40} ${BASE+126} h12 v22 h-12 z` },
-];
-
 export default function PainBodyMap({ selected, onToggle, view }: PainBodyMapProps) {
-  const zones = view === "front" ? ZONES_FRONT : ZONES_BACK;
+  const theme = useTheme() as any;
+  const paths = view === "front" ? CORPO_FRENTE_PATHS : CORPO_COSTAS_PATHS;
   const titulo = view === "front" ? "Vista Frontal" : "Vista Posterior";
 
   return (
     <View style={{ alignItems: "center" }}>
       <Text style={{
-        fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase",
-        color: "#8E8E93", marginBottom: 12,
+        fontSize: 11,
+        fontWeight: "700",
+        letterSpacing: 1,
+        textTransform: "uppercase",
+        color: theme.textSecondary,
+        marginBottom: 16,
       }}>
         {titulo}
       </Text>
-      <Svg width={BASE * 2 + 64} height={BASE * 2 + 150} viewBox={`0 0 ${BASE*2+64} ${BASE*2+150}`}>
-        {zones.map((z) => {
-          const isSel = selected.includes(z.id);
-          return (
-            <G key={z.id} onPress={() => onToggle(z.id)}>
-              <Path
-                d={z.d}
-                fill={isSel ? COR_FILL : "transparent"}
-                fillOpacity={isSel ? 0.5 : 0}
-                stroke={isSel ? COR_FILL : COR_STROKE}
-                strokeWidth={1.5}
-              />
-              <Path
-                d={z.d}
-                fill="transparent"
-                stroke="transparent"
-                strokeWidth={12}
-                onPress={() => onToggle(z.id)}
-              />
-            </G>
-          );
-        })}
-      </Svg>
+      
+      <View style={{
+        backgroundColor: theme.backgroundSecondary,
+        borderRadius: 24,
+        padding: 20,
+        borderWidth: 2,
+        borderColor: theme.backgroundTertiary,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+      }}>
+        <Svg width={180} height={240} viewBox="0 0 1501 2000">
+          {paths.map((p, idx) => {
+            const isOutline = idx === 0 || idx === 1;
+            const isSel = selected.includes(p.zone);
+            
+            // Base colors from theme
+            let fillColor = p.fill;
+            if (isOutline) {
+              // Outline gets theme-matched color
+              fillColor = idx === 0 ? "transparent" : theme.border;
+            } else {
+              // Muscle colors: if selected, turn bright red, else use beautiful low-poly fill
+              if (isSel) {
+                fillColor = "#FF3B30";
+              } else {
+                // Slightly dim unselected muscles for contrast in dark mode
+                fillColor = theme.background === "#080808" ? p.fill : p.fill + "CC";
+              }
+            }
+
+            if (isOutline || p.zone === "default") {
+              return (
+                <Path
+                  key={idx}
+                  d={p.d}
+                  fill={fillColor}
+                  stroke={isOutline && idx === 1 ? theme.border : "transparent"}
+                  strokeWidth={isOutline ? 2 : 0}
+                  transform={p.transform}
+                />
+              );
+            }
+
+            return (
+              <G key={idx} onPress={() => onToggle(p.zone)}>
+                <Path
+                  d={p.d}
+                  fill={fillColor}
+                  stroke={isSel ? "#FF3B30" : theme.background}
+                  strokeWidth={isSel ? 3 : 0.8}
+                  transform={p.transform}
+                />
+              </G>
+            );
+          })}
+        </Svg>
+      </View>
     </View>
   );
 }

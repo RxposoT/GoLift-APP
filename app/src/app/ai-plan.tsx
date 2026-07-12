@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   View,
-  Text,
   ScrollView,
   Pressable,
   TextInput,
@@ -17,6 +16,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { planoApi } from "../services/api";
 import { useTheme } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
+import { Text, Button } from "../components/ui";
+import PainBodyMap from "../components/PainBodyMap";
 
 interface Exercicio {
   nome: string;
@@ -63,16 +64,28 @@ const TARGET_OPTIONS = [
   { id: "Core",    icon: "ellipse"      as const },
 ];
 
-const DESCANSO_OPTIONS = [
-  { label: "30s",  value: 30,  desc: "Muito intenso" },
-  { label: "45s",  value: 45,  desc: "Intenso" },
-  { label: "60s",  value: 60,  desc: "Moderado" },
-  { label: "90s",  value: 90,  desc: "Standard" },
-  { label: "120s", value: 120, desc: "Relaxado" },
-  { label: "180s", value: 180, desc: "Muito relaxado" },
-];
+const ZONE_TO_TARGET: Record<string, string> = {
+  cabeca: "Core",
+  peito: "Peito",
+  abdominais: "Core",
+  ombro_e: "Ombros",
+  ombro_d: "Ombros",
+  braco_e: "Braços",
+  braco_d: "Braços",
+  quadriceps_e: "Pernas",
+  quadriceps_d: "Pernas",
+  joelho_e: "Pernas",
+  joelho_d: "Pernas",
+  gemeos_e: "Pernas",
+  gemeos_d: "Pernas",
+  costas_sup: "Costas",
+  lombar: "Costas",
+  gluteos: "Glúteos",
+  isquiotibiais_e: "Pernas",
+  isquiotibiais_d: "Pernas",
+};
 
-const WIZARD_STEPS = 6;
+const WIZARD_STEPS = 5;
 
 const FOCO_COLORS: Record<string, string> = {
   peito: "#f87171",
@@ -119,6 +132,7 @@ export default function AIPlan() {
   const [wTargets, setWTargets] = useState<string[]>([]);
   const [wCondicoes, setWCondicoes] = useState("");
   const [wDescanso, setWDescanso] = useState(90);
+  const [bodyView, setBodyView] = useState<"front" | "back">("front");
 
   useEffect(() => {
     if (user?.id) loadPlan();
@@ -210,7 +224,7 @@ export default function AIPlan() {
         objetivo: wObjetivo,
         targets: wTargets,
         condicoes: wCondicoes,
-        descansoEntreSeriesSegundos: wDescanso,
+        descansoEntreSeriesSegundos: 90, // default to 90 seconds
       });
       if (data.plano) {
         setPlano(data.plano as PlanoIA);
@@ -253,7 +267,6 @@ export default function AIPlan() {
     "Qual é o teu objetivo?",
     "Grupos musculares",
     "Condições ou notas",
-    "Descanso entre séries",
   ];
 
   const STEP_SUBTITLES = [
@@ -262,7 +275,6 @@ export default function AIPlan() {
     "Foco principal do plano",
     "Prioridades (opcional — vários)",
     "Lesões, limitações, preferências…",
-    "Segundos de pausa entre séries",
   ];
 
   // Wizard is active only if user can generate, hasn't started generating, and has no plan
@@ -506,39 +518,52 @@ export default function AIPlan() {
             </View>
           )}
 
-          {/* Step 4 — Targets (multi-select) */}
+          {/* Step 4 — Targets (interactive SVG human body map) */}
           {wizardStep === 4 && (
-            <>
-              <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 16 }}>
-                Seleciona os grupos que queres priorizar. Podes deixar vazio para um plano equilibrado.
+            <View style={{ alignItems: "center" }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 20, textAlign: "center" }}>
+                Toca nos músculos que queres priorizar. Podes alternar a vista.
               </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                {TARGET_OPTIONS.map((t) => {
-                  const selected = wTargets.includes(t.id);
-                  return (
-                    <Pressable
-                      key={t.id}
-                      onPress={() => toggleTarget(t.id)}
-                      style={({ pressed }) => ({
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 8,
-                        paddingVertical: 12,
-                        paddingHorizontal: 16,
-                        borderRadius: 14,
-                        backgroundColor: selected ? theme.accent : theme.backgroundSecondary,
-                        opacity: pressed ? 0.85 : 1,
-                      })}
-                    >
-                      <Ionicons name={t.icon} size={16} color={selected ? "#fff" : theme.textSecondary} />
-                      <Text style={{ fontWeight: "600", fontSize: 14, color: selected ? "#fff" : theme.text }}>
-                        {t.id}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              
+              <View style={{ flexDirection: "row", justifyContent: "center", gap: 12, marginBottom: 20 }}>
+                {["front", "back"].map((v) => (
+                  <Pressable
+                    key={v}
+                    onPress={() => setBodyView(v as "front" | "back")}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 24,
+                      borderRadius: 20,
+                      backgroundColor: bodyView === v ? theme.accent : theme.backgroundSecondary,
+                    }}
+                  >
+                    <Text style={{ color: bodyView === v ? "#fff" : theme.textSecondary, fontWeight: "600", fontSize: 13 }}>
+                      {v === "front" ? "Frontal" : "Posterior"}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
-            </>
+
+              <PainBodyMap
+                selected={Object.keys(ZONE_TO_TARGET).filter(z => wTargets.includes(ZONE_TO_TARGET[z]))}
+                onToggle={(z) => {
+                  const target = ZONE_TO_TARGET[z];
+                  if (target) {
+                    toggleTarget(target);
+                  }
+                }}
+                view={bodyView}
+              />
+
+              {wTargets.length > 0 && (
+                <View style={{ marginTop: 24, alignItems: "center" }}>
+                  <Text variant="footnote" color="textSecondary">Selecionado para priorizar:</Text>
+                  <Text style={{ color: theme.accent, fontSize: 16, fontWeight: "700", marginTop: 4 }}>
+                    {wTargets.join(", ")}
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
 
           {/* Step 5 — Condições */}
@@ -568,88 +593,21 @@ export default function AIPlan() {
             </>
           )}
 
-          {/* Step 6 — Descanso */}
-          {wizardStep === 6 && (
-            <>
-              <Text style={{ color: theme.textSecondary, fontSize: 14, lineHeight: 20, marginBottom: 16 }}>
-                O plano vai usar este valor como padrão entre séries. Podes ajustar durante o treino.
-              </Text>
-              <View style={{ gap: 10 }}>
-                {DESCANSO_OPTIONS.map((d) => (
-                  <Pressable
-                    key={d.value}
-                    onPress={() => setWDescanso(d.value)}
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: 16,
-                      borderRadius: 18,
-                      backgroundColor: wDescanso === d.value ? theme.accent : theme.backgroundSecondary,
-                      opacity: pressed ? 0.85 : 1,
-                    })}
-                  >
-                    <View style={{
-                      width: 52, height: 44, borderRadius: 12,
-                      backgroundColor: wDescanso === d.value ? "rgba(255,255,255,0.2)" : theme.backgroundTertiary,
-                      justifyContent: "center", alignItems: "center", marginRight: 14,
-                    }}>
-                      <Text style={{ fontWeight: "800", fontSize: 15, color: wDescanso === d.value ? "#fff" : theme.text }}>
-                        {d.label}
-                      </Text>
-                    </View>
-                    <Text style={{ flex: 1, fontSize: 15, color: wDescanso === d.value ? "rgba(255,255,255,0.8)" : theme.textSecondary }}>
-                      {d.desc}
-                    </Text>
-                    {wDescanso === d.value && (
-                      <Ionicons name="checkmark-circle" size={22} color="#fff" />
-                    )}
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          )}
+
 
         </ScrollView>
 
         {/* Bottom button */}
         <View style={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: safeBottom + 16 }}>
-          <Pressable
+          <Button
+            variant="duo"
+            size="lg"
             onPress={handleWizardNext}
             disabled={!canContinue}
-            style={({ pressed }) => ({
-              backgroundColor: canContinue ? theme.accent : theme.backgroundTertiary,
-              borderRadius: 18,
-              paddingVertical: 18,
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: 10,
-              opacity: pressed ? 0.85 : 1,
-              shadowColor: canContinue ? theme.accent : "transparent",
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.3,
-              shadowRadius: 12,
-              elevation: canContinue ? 6 : 0,
-            })}
+            style={{ width: "100%" }}
           >
-            {isLastStep ? (
-              <>
-                <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" }}>
-                  <Ionicons name="sparkles" size={14} color="#fff" />
-                </View>
-                <Text style={{ color: canContinue ? "#fff" : theme.textTertiary, fontWeight: "800", fontSize: 17, letterSpacing: -0.3 }}>
-                  {isAdmin ? "Gerar novo plano" : "Gerar Plano com IA"}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={{ color: canContinue ? "#fff" : theme.textTertiary, fontWeight: "700", fontSize: 17 }}>
-                  Continuar
-                </Text>
-                <Ionicons name="arrow-forward" size={18} color={canContinue ? "#fff" : theme.textTertiary} />
-              </>
-            )}
-          </Pressable>
+            {isLastStep ? (isAdmin ? "Gerar novo plano" : "Gerar Plano com IA") : "Continuar"}
+          </Button>
           {isLastStep && (
             <Text style={{ color: theme.textTertiary, fontSize: 11, textAlign: "center", marginTop: 10 }}>
               {isAdmin ? "Como admin, podes gerar quantos planos quiseres." : "Podes gerar um plano por mês."}
