@@ -358,16 +358,26 @@ export default function Workouts() {
                   accessibilityLabel={`Começar treino ${workout.nome}`}
                   accessibilityRole="button"
                   style={({ pressed }) => ({
-                    backgroundColor: theme.backgroundSecondary,
-                    borderRadius: radius.xl,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                    flexDirection: "row",
-                    opacity: pressed ? 0.88 : 1,
-                    marginBottom: spacing.xs,
+                    backgroundColor: theme.backgroundTertiary, // Cor da sombra
+                    borderRadius: 16, // radius.xl aprox
+                    marginBottom: spacing.sm,
+                    opacity: pressed ? 0.9 : 1,
+                    marginTop: pressed ? 4 : 0,
                   })}
                 >
-                  <View style={{ flex: 1, padding: spacing.lg }}>
+                  {({ pressed }) => (
+                    <View
+                      style={{
+                        backgroundColor: theme.backgroundSecondary,
+                        borderRadius: 16,
+                        borderWidth: 2,
+                        borderColor: theme.backgroundTertiary,
+                        flexDirection: "row",
+                        transform: [{ translateY: pressed ? 0 : -4 }],
+                        marginBottom: pressed ? 0 : 4,
+                      }}
+                    >
+                      <View style={{ flex: 1, padding: spacing.lg }}>
                     <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
                       <View style={{ flex: 1, marginRight: 12 }}>
                         <Text variant="title3">{workout.nome}</Text>
@@ -408,8 +418,10 @@ export default function Workouts() {
                       </View>
                     </View>
 
-                    {!!workout.exercicios_nomes && <Text variant="footnote" color="textTertiary" numberOfLines={1} style={{ marginTop: spacing.md }}>{workout.exercicios_nomes}</Text>}
+                      {!!workout.exercicios_nomes && <Text variant="footnote" color="textTertiary" numberOfLines={1} style={{ marginTop: spacing.md }}>{workout.exercicios_nomes}</Text>}
+                    </View>
                   </View>
+                  )}
                 </Pressable>
               ))}
             </View>

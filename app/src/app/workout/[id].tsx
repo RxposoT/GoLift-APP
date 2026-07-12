@@ -18,7 +18,7 @@ import * as Haptics from "expo-haptics";
 import { usePostHog } from "posthog-react-native";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../styles/theme";
-import { Text, Card } from "../../components/ui";
+import { Text, Button } from "../../components/ui";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { workoutApi, metricsApi, planoApi } from "../../services/api";
 
@@ -88,20 +88,29 @@ const SerieRow = memo(function SerieRow({
     onToggleConcluida();
   }
 
+  const isFilled = serie.peso && serie.repeticoes;
+
   return (
     <View
       style={{
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: theme.background,
+        backgroundColor: serie.concluida
+          ? (theme.accentGreen || "#34C759") + "12"
+          : theme.backgroundSecondary,
         borderRadius: 12,
-        paddingVertical: 8,
-        paddingHorizontal: 4,
+        marginBottom: 4,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderWidth: 1,
+        borderColor: serie.concluida
+          ? (theme.accentGreen || "#34C759") + "40"
+          : "transparent",
       }}
     >
       {/* Número da série */}
-      <View style={{ width: 44, alignItems: "center" }}>
-        <Text style={{ color: theme.textTertiary, fontSize: 14, fontWeight: "600" }}>
+      <View style={{ width: 32, alignItems: "center" }}>
+        <Text style={{ color: serie.concluida ? theme.accentGreen || "#34C759" : theme.textTertiary, fontSize: 13, fontWeight: "700" }}>
           {serie.numero || index + 1}
         </Text>
       </View>
@@ -110,19 +119,19 @@ const SerieRow = memo(function SerieRow({
       <View style={{ flex: 1, paddingRight: 6 }}>
         <TextInput
           style={{
-            backgroundColor: theme.backgroundTertiary,
-            borderRadius: 8,
+            backgroundColor: theme.background,
+            borderRadius: 10,
             paddingHorizontal: 10,
-            paddingVertical: 6,
+            paddingVertical: 9,
             color: theme.text,
-            fontSize: 15,
-            fontWeight: "600",
+            fontSize: 16,
+            fontWeight: "700",
             textAlign: "center",
             borderWidth: 1.5,
-            borderColor: focusedPeso ? theme.accent : "transparent",
+            borderColor: focusedPeso ? theme.accent : theme.backgroundTertiary,
           }}
-          placeholder={prevPeso}
-          placeholderTextColor={theme.textTertiary}
+          placeholder={hasPrevious ? prevPeso : "0"}
+          placeholderTextColor={hasPrevious ? theme.accent + "80" : theme.textTertiary}
           keyboardType="decimal-pad"
           value={serie.peso}
           onChangeText={(val) => onChangeValor("peso", val)}
@@ -130,30 +139,25 @@ const SerieRow = memo(function SerieRow({
           onBlur={() => setFocusedPeso(false)}
           accessibilityLabel={`Peso para série ${index + 1} de ${exercicioNome}`}
         />
-        {hasPrevious && !serie.peso && (
-          <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
-            ↑{prevPeso}kg
-          </Text>
-        )}
       </View>
 
       {/* Repetições */}
       <View style={{ flex: 1, paddingHorizontal: 6 }}>
         <TextInput
           style={{
-            backgroundColor: theme.backgroundTertiary,
-            borderRadius: 8,
+            backgroundColor: theme.background,
+            borderRadius: 10,
             paddingHorizontal: 10,
-            paddingVertical: 6,
+            paddingVertical: 9,
             color: theme.text,
-            fontSize: 15,
-            fontWeight: "600",
+            fontSize: 16,
+            fontWeight: "700",
             textAlign: "center",
             borderWidth: 1.5,
-            borderColor: focusedReps ? theme.accent : "transparent",
+            borderColor: focusedReps ? theme.accent : theme.backgroundTertiary,
           }}
-          placeholder={prevReps}
-          placeholderTextColor={theme.textTertiary}
+          placeholder={hasPrevious ? prevReps : "0"}
+          placeholderTextColor={hasPrevious ? theme.accent + "80" : theme.textTertiary}
           keyboardType="number-pad"
           value={serie.repeticoes}
           onChangeText={(val) => onChangeValor("repeticoes", val)}
@@ -161,11 +165,6 @@ const SerieRow = memo(function SerieRow({
           onBlur={() => setFocusedReps(false)}
           accessibilityLabel={`Repetições para série ${index + 1} de ${exercicioNome}`}
         />
-        {hasPrevious && !serie.repeticoes && (
-          <Text style={{ color: theme.accent, fontSize: 9, textAlign: "center", marginTop: 2 }}>
-            ↑{prevReps}
-          </Text>
-        )}
       </View>
 
       {/* Checkbox */}
@@ -174,12 +173,12 @@ const SerieRow = memo(function SerieRow({
         accessibilityLabel={serie.concluida ? "Marcar como não concluída" : "Marcar como concluída"}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: serie.concluida }}
-        style={{ width: 36, alignItems: "center", justifyContent: "center", paddingVertical: 4 }}
+        style={{ width: 40, alignItems: "center", justifyContent: "center", paddingVertical: 4 }}
       >
         <Animated.View style={{ transform: [{ scale: checkScale }] }}>
           <Ionicons
             name={serie.concluida ? "checkmark-circle" : "ellipse-outline"}
-            size={24}
+            size={28}
             color={serie.concluida ? theme.accentGreen || "#34C759" : theme.textTertiary}
           />
         </Animated.View>
@@ -538,12 +537,32 @@ export default function WorkoutActive() {
   function toggleSerieConcluida(exercicioId: number, serieIndex: number) {
     const exercicio = exercicios.find((ex) => ex.id === exercicioId);
     const serieAtual = exercicio?.series[serieIndex];
-    if (serieAtual && !serieAtual.concluida) {
+    const isCompleting = serieAtual && !serieAtual.concluida;
+
+    if (isCompleting) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       startRestTimer();
+
+      // Cascade auto-fill: preencher série seguinte com os valores atuais
+      if (exercicio && serieAtual) {
+        const nextIndex = serieIndex + 1;
+        const nextSerie = exercicio.series[nextIndex];
+        if (nextSerie && !nextSerie.peso && !nextSerie.repeticoes) {
+          // Usar os valores preenchidos ou os do treino anterior
+          const pesoParaCopiar = serieAtual.peso || getPlaceholder(exercicioId, serieIndex, "peso");
+          const repsParaCopiar = serieAtual.repeticoes || getPlaceholder(exercicioId, serieIndex, "repeticoes");
+          if (pesoParaCopiar !== "-" || repsParaCopiar !== "-") {
+            setTimeout(() => {
+              atualizarSerie(exercicioId, nextIndex, "peso", pesoParaCopiar !== "-" ? pesoParaCopiar : "");
+              atualizarSerie(exercicioId, nextIndex, "repeticoes", repsParaCopiar !== "-" ? repsParaCopiar : "");
+            }, 100);
+          }
+        }
+      }
     } else {
       skipRestTimer();
     }
+
     setExercicios((prev) =>
       prev.map((ex: any) =>
         ex.id === exercicioId
@@ -772,49 +791,36 @@ export default function WorkoutActive() {
               <View style={{ width: 4, backgroundColor: todasConcluidas ? theme.accentGreen : theme.accent }} />
               <View style={{ flex: 1, padding: 16 }}>
                 {/* ── Exercise Header ── */}
-                <Pressable
-                  onPress={() => autoFillFromPrevious(exercicio.id, 0)}
-                  accessibilityLabel={`${exercicio.nome}, ${concluidas} de ${exercicio.series.length} séries concluídas`}
-                  accessibilityRole="header"
-                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}
-                >
-                  <Text style={{ color: theme.text, fontSize: 16, fontWeight: "700", flex: 1 }} numberOfLines={2}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+                  {todasConcluidas && (
+                    <View style={{ marginRight: 8 }}>
+                      <Ionicons name="checkmark-circle" size={18} color={theme.accentGreen || "#34C759"} />
+                    </View>
+                  )}
+                  <Text
+                    style={{
+                      color: todasConcluidas ? theme.accentGreen || "#34C759" : theme.text,
+                      fontSize: 16,
+                      fontWeight: "700",
+                      flex: 1,
+                    }}
+                    numberOfLines={2}
+                  >
                     {exercicio.nome}
                   </Text>
-                  <View
-                    style={{
-                      backgroundColor: todasConcluidas ? (theme.accentGreen || "#34C759") + "22" : theme.backgroundTertiary,
-                      borderRadius: 10,
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      marginLeft: 8,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: todasConcluidas ? theme.accentGreen || "#34C759" : theme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: "700",
-                      }}
-                    >
-                      {concluidas}/{exercicio.series.length}
-                    </Text>
-                  </View>
-                </Pressable>
+                </View>
 
                 {/* ── Series Table ── */}
-                <View style={{ gap: 6 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 4, marginBottom: 2 }}>
-                    <Text style={{ width: 44, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
-                      SÉRIE
-                    </Text>
-                    <Text style={{ flex: 1, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
+                <View style={{ gap: 2 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 8, marginBottom: 4 }}>
+                    <View style={{ width: 32 }} />
+                    <Text style={{ flex: 1, color: theme.textTertiary, fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textAlign: "center" }}>
                       PESO (kg)
                     </Text>
-                    <Text style={{ flex: 1, color: theme.textTertiary, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 }}>
+                    <Text style={{ flex: 1, color: theme.textTertiary, fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textAlign: "center" }}>
                       REPS
                     </Text>
-                    <View style={{ width: 36 }} />
+                    <View style={{ width: 40 }} />
                   </View>
 
                   {exercicio.series.map((serie: Serie, sIndex: number) => {
@@ -953,61 +959,27 @@ export default function WorkoutActive() {
       {/* ── Footer fixo ── */}
       <View
         style={{
-          paddingHorizontal: 24,
-          paddingTop: 12,
-          paddingBottom: 28,
+          paddingHorizontal: 20,
+          paddingTop: 8,
+          paddingBottom: 24,
           backgroundColor: theme.background,
           borderTopWidth: 1,
           borderTopColor: theme.backgroundTertiary,
         }}
       >
-        <Pressable
-          onPress={concluirTreino}
-          accessibilityLabel="Concluir treino"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            {
-              backgroundColor: theme.accent,
-              paddingVertical: 20,
-              borderRadius: 24,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 12,
-              opacity: pressed ? 0.92 : 1,
-              shadowColor: theme.accent,
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.35,
-              shadowRadius: 16,
-              elevation: 8,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          <Ionicons name="checkmark-circle" size={26} color="#fff" style={{ marginRight: 2 }} />
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18, letterSpacing: -0.3 }}>Concluir Treino</Text>
-          {totalSeries > 0 && (
-            <View
-              style={{
-                backgroundColor: "rgba(255,255,255,0.18)",
-                borderRadius: 12,
-                paddingHorizontal: 10,
-                paddingVertical: 2,
-                marginLeft: 6,
-              }}
-            >
-              <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 14, fontWeight: "700" }}>
-                {seriesConcluidas}/{totalSeries}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-
         {totalSeries > 0 && (
-          <View style={{ height: 5, backgroundColor: theme.backgroundTertiary, borderRadius: 3, marginTop: 12, overflow: "hidden" }}>
-            <Animated.View style={{ height: 5, width: progressWidth, backgroundColor: theme.accent, borderRadius: 3 }} />
+          <View style={{ height: 4, backgroundColor: theme.backgroundTertiary, borderRadius: 2, marginBottom: 10, overflow: "hidden" }}>
+            <Animated.View style={{ height: 4, width: progressWidth, backgroundColor: theme.accent, borderRadius: 2 }} />
           </View>
         )}
+        <Button
+          variant="duo"
+          size="lg"
+          onPress={concluirTreino}
+          style={{ width: "100%" }}
+        >
+          Concluir Treino
+        </Button>
       </View>
     </View>
   );
