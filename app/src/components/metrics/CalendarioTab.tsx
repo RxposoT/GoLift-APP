@@ -75,30 +75,49 @@ export default function CalendarioTab({
                 onPress={() => onDayPress(day)}
                 activeOpacity={isWorkoutDay(day) ? 0.7 : 1}
               >
-                {day !== null && (
-                  <View style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    backgroundColor: isToday(day)
-                      ? theme.accentGreen
-                      : isWorkoutDay(day)
-                        ? theme.accent
-                        : "transparent",
-                  }}>
-                    <Text style={{
-                      fontSize: 13,
-                      fontWeight: isToday(day) || isWorkoutDay(day) ? "700" : "400",
-                      color: isToday(day) || isWorkoutDay(day)
-                        ? "#fff"
-                        : theme.textSecondary,
+                {day !== null && (() => {
+                  const workout = isWorkoutDay(day);
+                  const today = isToday(day);
+                  
+                  let bgColor = "transparent";
+                  let borderColor = "transparent";
+                  let textColor = theme.textSecondary;
+                  let borderWidth = 0;
+                  
+                  if (workout) {
+                    bgColor = theme.accentGreen || "#30D158";
+                    textColor = "#fff";
+                    if (today) {
+                      borderColor = theme.accent;
+                      borderWidth = 2;
+                    }
+                  } else if (today) {
+                    borderColor = theme.border;
+                    borderWidth = 2;
+                    textColor = theme.accent;
+                  }
+
+                  return (
+                    <View style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      backgroundColor: bgColor,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
                     }}>
-                      {day}
-                    </Text>
-                  </View>
-                )}
+                      <Text style={{
+                        fontSize: 13,
+                        fontWeight: today || workout ? "700" : "400",
+                        color: textColor,
+                      }}>
+                        {day}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </TouchableOpacity>
             ))}
           </View>
@@ -107,11 +126,11 @@ export default function CalendarioTab({
         {/* Legenda */}
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 20, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: theme.backgroundTertiary }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: theme.accentGreen }} />
+            <View style={{ width: 12, height: 12, borderRadius: 4, borderWidth: 1.5, borderColor: theme.border, backgroundColor: "transparent" }} />
             <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Hoje</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: theme.accent }} />
+            <View style={{ width: 12, height: 12, borderRadius: 4, backgroundColor: theme.accentGreen || "#30D158" }} />
             <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Com treino</Text>
           </View>
         </View>

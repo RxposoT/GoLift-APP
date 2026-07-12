@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   PanResponder,
+  Pressable,
 } from "react-native";
 import { Text, Card, Button } from "../../components/ui";
 import { Ionicons } from "@expo/vector-icons";
@@ -501,23 +502,43 @@ export default function Metrics() {
           { key: 'recordes' as const, label: 'Recordes' },
         ]).map((tab) => {
           const isActive = activeMetricsTab === tab.key;
+          const shadowColor = isActive ? theme.accent : "transparent";
+          const borderColor = isActive ? theme.accent : "transparent";
+          const bg = isActive ? theme.background : "transparent";
+          const textColor = isActive ? theme.accent : theme.textSecondary;
+          
           return (
-            <Button
+            <Pressable
               key={tab.key}
-              variant={isActive ? "primary" : "secondary"}
-              size="sm"
+              onPress={() => handleTabChange(tab.key)}
               style={{
                 flex: 1,
-                backgroundColor: isActive ? undefined : theme.backgroundTertiary,
+                backgroundColor: shadowColor,
+                borderRadius: 10,
+                marginBottom: 4,
               }}
-              onPress={() => handleTabChange(tab.key)}
             >
-              {isActive ? tab.label : (
-                <Text style={{ color: theme.textSecondary, fontWeight: "600", fontSize: 13 }}>
+              <View
+                style={{
+                  backgroundColor: bg,
+                  borderColor: borderColor,
+                  borderWidth: 2,
+                  borderRadius: 10,
+                  paddingVertical: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transform: [{ translateY: -4 }],
+                }}
+              >
+                <Text style={{
+                  color: textColor,
+                  fontWeight: "700",
+                  fontSize: 13,
+                }}>
                   {tab.label}
                 </Text>
-              )}
-            </Button>
+              </View>
+            </Pressable>
           );
         })}
       </View>
@@ -609,6 +630,7 @@ export default function Metrics() {
           theme={theme}
           records={records}
           formatDate={formatDate}
+          userId={user!.id}
         />
       )}
 

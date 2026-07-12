@@ -168,7 +168,7 @@ export const metricsApi = {
     if (error) return {};
     return (data || []).reduce((totals: Record<string, number>, set: any) => {
       const group = set.exercise?.grupo_tipo;
-      if (!group || !["Peito", "Costas", "Ombros", "Pernas", "Abdominais"].includes(group)) return totals;
+      if (!group || !["Peito", "Costas", "Ombros", "Pernas", "Abdominais", "Braços"].includes(group)) return totals;
       totals[group] = (totals[group] || 0) + Math.max(1, Number(set.repeticoes) || 0);
       return totals;
     }, {});

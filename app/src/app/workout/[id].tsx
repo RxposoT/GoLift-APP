@@ -628,8 +628,41 @@ export default function WorkoutActive() {
                 });
               }
             }
+            
+            // Guardar sessão
             const sessionResult = await workoutApi.saveSession(user!.id, Number(id), tempoDecorrido, todasAsSeries);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+            // Calcular XP Ganho
+            let xpEarned = 0;
+            const records = await metricsApi.getRecords(user!.id).catch(() => []);
+            
+            for (const exercicio of exercicios) {
+              const completedSets = exercicio.series.filter((s: any) => s.concluida);
+              if (completedSets.length === 0) continue;
+              
+              const currentMaxWeight = Math.max(...completedSets.map((s: any) => parseFloat(s.peso) || 0));
+              const exerciseRecord = records.find((r: any) => r.nome_exercicio === exercicio.nome);
+              
+              if (!exerciseRecord) {
+                xpEarned += 20; // Primeira vez
+              } else {
+                if (currentMaxWeight > (exerciseRecord.peso || 0)) {
+                  xpEarned += 25; // Recorde
+                } else {
+                  const prevMax = exercicio.previousSeries
+                    ? Math.max(...exercicio.previousSeries.map((s: any) => parseFloat(s.peso) || 0))
+                    : 0;
+                  if (prevMax > 0 && currentMaxWeight > prevMax) {
+                    xpEarned += 15; // Aumentou carga
+                  } else {
+                    xpEarned += 10; // Normal
+                  }
+                }
+              }
+            }
+            
+            if (xpEarned === 0) xpEarned = 10; // Garantia mínima
 
             const volume = todasAsSeries.reduce((acc, s) => acc + s.peso * s.repeticoes, 0);
             const exerciciosPayload = exercicios
@@ -648,6 +681,7 @@ export default function WorkoutActive() {
               total_series: todasAsSeries.length,
               volume_total: Math.round(volume),
               exercicios_count: exerciciosPayload.length,
+              xp_ganho: xpEarned,
             });
 
             if (tickRef.current) clearInterval(tickRef.current);
@@ -662,6 +696,7 @@ export default function WorkoutActive() {
                 totalSeries: String(todasAsSeries.length),
                 volume: String(Math.round(volume)),
                 exercicios: JSON.stringify(exerciciosPayload),
+                xpEarned: String(xpEarned),
               },
             });
           } catch (error) {

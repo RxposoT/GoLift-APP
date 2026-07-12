@@ -16,6 +16,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
 import { planoApi, metricsApi } from "../../services/api";
+import { supabase } from "../../lib/supabase";
 import PainBodyMap from "../../components/PainBodyMap";
 import { Button, Text } from "../../components/ui";
 import { spacing, radius } from "../../styles/tokens";
@@ -88,7 +89,7 @@ function VolumeBar({ label, value, max, color }: { label: string; value: number;
 
 // ─── Ecrã Simples (Free) ──────────────────────────────────────────────────────
 
-function FreeSummary({ nome, duracao, totalSeries, volume, exerciciosData }: any) {
+function FreeSummary({ nome, duracao, totalSeries, volume, exerciciosData, xpEarned }: any) {
   const theme = useTheme() as any;
   const { safeTop, paddingBottom: safeBottom } = useAndroidInsets();
   const entryAnim = useRef(new Animated.Value(0)).current;
@@ -152,20 +153,35 @@ function FreeSummary({ nome, duracao, totalSeries, volume, exerciciosData }: any
             </View>
           </View>
 
-          {volume > 0 && (
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {volume > 0 && (
+              <View style={{
+                flex: 1, backgroundColor: theme.accent,
+                borderRadius: radius.xl, padding: 20, alignItems: "center",
+                borderWidth: 2, borderColor: theme.primary,
+                shadowColor: theme.primary, shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 1, shadowRadius: 0, elevation: 4,
+              }}>
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>
+                  VOLUME TOTAL
+                </Text>
+                <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>
+                  {volume >= 1000 ? `${(volume / 1000).toFixed(1)}t` : `${volume}kg`}
+                </Text>
+              </View>
+            )}
+            
             <View style={{
-              backgroundColor: theme.accent, borderRadius: radius.xl, padding: 20,
-              borderWidth: 2, borderBottomWidth: 6,
-              borderColor: theme.primary,
+              flex: 1, backgroundColor: theme.backgroundSecondary,
+              borderRadius: radius.xl, padding: 20, alignItems: "center",
+              borderWidth: 2, borderColor: theme.backgroundTertiary,
+              shadowColor: theme.backgroundTertiary, shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 1, shadowRadius: 0, elevation: 4,
             }}>
-              <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>
-                VOLUME TOTAL
-              </Text>
-              <Text style={{ color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -1.5 }}>
-                {volume >= 1000 ? `${(volume / 1000).toFixed(1)}t` : `${volume}kg`}
-              </Text>
+              <Text variant="caption" color="textSecondary" style={{ marginBottom: 6 }}>XP GANHO</Text>
+              <Text variant="title2" style={{ color: theme.accentGreen || "#30D158" }}>+{xpEarned} XP</Text>
             </View>
-          )}
+          </View>
         </View>
       </ScrollView>
 
@@ -181,7 +197,7 @@ function FreeSummary({ nome, duracao, totalSeries, volume, exerciciosData }: any
 
 // ─── Ecrã Premium (Duolingo-style) ────────────────────────────────────────────
 
-function PremiumFlow({ sessionId, nome, duracao, totalSeries, volume, exerciciosData, userId, posthog }: any) {
+function PremiumFlow({ sessionId, nome, duracao, totalSeries, volume, exerciciosData, userId, posthog, xpEarned }: any) {
   const theme = useTheme() as any;
   const { safeTop, paddingBottom: safeBottom } = useAndroidInsets();
 
@@ -198,6 +214,37 @@ function PremiumFlow({ sessionId, nome, duracao, totalSeries, volume, exercicios
 
   const slideAnim = useRef(new Animated.Value(0)).current;
   const gorillaBounce = useRef(new Animated.Value(0)).current;
+
+  // Salvar XP ao montar o ecra final
+  useEffect(() => {
+    if (userId && xpEarned > 0) {
+      supabase
+        .from("profiles")
+        .select("xp, nivel")
+        .eq("id", userId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            let currentXp = data.xp ?? 0;
+            let currentNivel = data.nivel ?? 1;
+            
+            currentXp += xpEarned;
+            while (currentXp >= currentNivel * 100) {
+              currentXp -= currentNivel * 100;
+              currentNivel += 1;
+            }
+            
+            supabase
+              .from("profiles")
+              .update({ xp: currentXp, nivel: currentNivel })
+              .eq("id", userId)
+              .then(() => {
+                console.log("XP atualizado:", currentXp, currentNivel);
+              });
+          }
+        });
+    }
+  }, [userId, xpEarned]);
 
   // Carregar volume anterior para comparação
   useEffect(() => {
@@ -472,6 +519,30 @@ function PremiumFlow({ sessionId, nome, duracao, totalSeries, volume, exercicios
           </View>
         </View>
 
+        {/* Banner de XP */}
+        <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+          <View style={{
+            backgroundColor: theme.backgroundSecondary, borderRadius: radius.xl, padding: 16,
+            borderWidth: 2, borderBottomWidth: 5, borderColor: theme.backgroundTertiary,
+            flexDirection: "row", alignItems: "center", gap: 14,
+          }}>
+            <View style={{
+              width: 44, height: 44, borderRadius: 14, backgroundColor: (theme.accentGreen || "#30D158") + "18",
+              alignItems: "center", justifyContent: "center",
+            }}>
+              <Ionicons name="sparkles" size={22} color={theme.accentGreen || "#30D158"} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: "800", fontSize: 16, color: theme.text }}>
+                +{xpEarned} XP Conquistados!
+              </Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
+                O teu nível e XP foram atualizados no teu perfil.
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Gráfico de progresso de volume */}
         {(volume > 0 || previousVolume > 0) && (
           <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
@@ -567,6 +638,7 @@ export default function WorkoutFeedback() {
   const totalSeries = Number(params.totalSeries ?? 0);
   const volume = Number(params.volume ?? 0);
   const exerciciosRaw = (params.exercicios as string) ?? "[]";
+  const xpEarned = Number(params.xpEarned ?? 10);
 
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
 
@@ -592,7 +664,7 @@ export default function WorkoutFeedback() {
       <FreeSummary
         nome={nome} duracao={duracao}
         totalSeries={totalSeries} volume={volume}
-        exerciciosData={exerciciosData}
+        exerciciosData={exerciciosData} xpEarned={xpEarned}
       />
     );
   }
@@ -602,7 +674,7 @@ export default function WorkoutFeedback() {
       sessionId={sessionId} nome={nome}
       duracao={duracao} totalSeries={totalSeries}
       volume={volume} exerciciosData={exerciciosData}
-      userId={user!.id} posthog={posthog}
+      userId={user!.id} posthog={posthog} xpEarned={xpEarned}
     />
   );
 }
