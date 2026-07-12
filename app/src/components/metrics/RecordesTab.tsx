@@ -36,7 +36,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
       const best = sorted[0];
       return {
         nome,
-        id_exercicio: best.id_exercicio || best.exercicio_id,
+        id_exercicio: best.exercise_id || best.id_exercicio || best.exercicio_id,
         peso: best.peso || best.weight,
         data: best.data_serie || best.data,
       };

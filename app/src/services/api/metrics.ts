@@ -33,6 +33,7 @@ export const metricsApi = {
       nome_exercicio: r.exercise_name,
       peso: r.peso,
       data_serie: r.data_serie,
+      exercise_id: r.exercise_id,
     }));
   },
 
