@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   ScrollView,
@@ -9,15 +9,16 @@ import {
   Animated,
   Modal,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Text, Card, Divider } from "../components/ui";
+import * as Haptics from "expo-haptics";
+
+import { Text, Card, Divider, SectionHeader, ListItem } from "../components/ui";
 import { useTheme, useThemePreference } from "../styles/theme";
 import { useAndroidInsets } from "../hooks/useAndroidInsets";
-import { useFadeIn } from "../hooks/useAnimations";
 import type { ThemePreference } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { userApi, planoApi } from "../services/api";
@@ -28,83 +29,37 @@ import {
 } from "../services/notifications";
 import { spacing, radius as R, iconSize } from "../styles/tokens";
 import { MODAL_BACKDROP } from "../styles/colors";
-import * as Haptics from "expo-haptics";
-
-// ─── Section header ────────────────────────────────────────────────────────────
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <Text variant="caption" color="textSecondary" style={{ marginBottom: 10, marginTop: 6, letterSpacing: 0.8 }}>
-      {title.toUpperCase()}
-    </Text>
-  );
-}
-
-// ─── Row ───────────────────────────────────────────────────────────────────────
-interface RowProps {
-  label: string;
-  subtitle?: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  onPress?: () => void;
-  rightEl?: React.ReactNode;
-  index?: number;
-  destructive?: boolean;
-}
-
-function Row({ label, subtitle, icon, iconBg, onPress, rightEl, index = 0, destructive }: RowProps) {
-  const theme = useTheme();
-  const { opacity, translateY } = useFadeIn(index);
-  const tint = destructive ? theme.danger : iconBg;
-
-  return (
-    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-      <Pressable
-        onPress={onPress}
-        disabled={!onPress}
-        accessibilityRole={onPress ? "button" : "none"}
-        accessibilityLabel={label}
-        style={({ pressed }) => ({
-          flexDirection: "row", alignItems: "center",
-          paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
-          opacity: pressed && onPress ? 0.7 : 1,
-        })}
-      >
-        <View style={{
-          width: 36, height: 36, borderRadius: R.md,
-          backgroundColor: tint + "18",
-          justifyContent: "center", alignItems: "center", marginRight: 14,
-        }}>
-          <Ionicons name={icon} size={18} color={tint} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="body" style={{ color: destructive ? theme.danger : theme.text, fontWeight: "600" }}>
-            {label}
-          </Text>
-          {subtitle && <Text variant="footnote" color="textSecondary" style={{ marginTop: 2 }}>{subtitle}</Text>}
-        </View>
-        {rightEl}
-        {!rightEl && onPress && <Ionicons name="chevron-forward" size={15} color={theme.textSecondary} />}
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 // ─── Theme Pill ────────────────────────────────────────────────────────────────
+type ThemePillProps = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  value: ThemePreference;
+  current: ThemePreference;
+  onSelect: (v: ThemePreference) => void;
+};
+
 function ThemePill({ label, icon, value, current, onSelect }: ThemePillProps) {
   const theme = useTheme();
   const active = current === value;
 
   return (
     <Pressable
-      onPress={() => onSelect(value)}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onSelect(value);
+      }}
       accessibilityRole="radio"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       style={({ pressed }) => ({
-        flex: 1, paddingVertical: 14, borderRadius: R.lg,
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: R.lg,
         alignItems: "center",
         backgroundColor: active ? theme.accent : theme.backgroundTertiary,
-        opacity: pressed ? 0.8 : 1, gap: 6,
+        opacity: pressed ? 0.8 : 1,
+        gap: 6,
       })}
     >
       <Ionicons name={icon} size={20} color={active ? "#fff" : theme.textSecondary} />
@@ -115,42 +70,58 @@ function ThemePill({ label, icon, value, current, onSelect }: ThemePillProps) {
   );
 }
 
-interface ThemePillProps {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  value: ThemePreference;
-  current: ThemePreference;
-  onSelect: (v: ThemePreference) => void;
-}
-
 // ─── Page Header ───────────────────────────────────────────────────────────────
 function PageHeader() {
   const theme = useTheme();
   const { safeTop } = useAndroidInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => { Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start(); }, []);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim, paddingHorizontal: 24, paddingTop: safeTop + 16, paddingBottom: 16, flexDirection: "row", alignItems: "center" }}>
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        paddingHorizontal: 24,
+        paddingTop: safeTop + 16,
+        paddingBottom: 24,
+        flexDirection: "row",
+        alignItems: "center",
+      }}
+    >
       <Pressable
-        onPress={() => router.back()}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.back();
+        }}
         accessibilityRole="button"
         accessibilityLabel="Voltar"
         style={({ pressed }) => ({
-          width: 40, height: 40, borderRadius: R.lg,
+          width: 40,
+          height: 40,
+          borderRadius: R.lg,
           backgroundColor: theme.backgroundSecondary,
-          justifyContent: "center", alignItems: "center",
-          marginRight: 14, opacity: pressed ? 0.7 : 1,
+          justifyContent: "center",
+          alignItems: "center",
+          marginRight: 14,
+          opacity: pressed ? 0.7 : 1,
         })}
       >
         <Ionicons name="arrow-back" size={20} color={theme.text} />
       </Pressable>
-      <Text variant="title2" style={{ letterSpacing: -0.6, flex: 1 }}>Definições</Text>
+      <Text variant="title2" style={{ letterSpacing: -0.6, flex: 1, fontWeight: "800" }}>
+        Definições
+      </Text>
     </Animated.View>
   );
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────────
 export default function Settings() {
   const { user, logout } = useAuth();
   const theme = useTheme();
@@ -161,19 +132,22 @@ export default function Settings() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [profile, setProfile] = useState<any>(null);
 
-  // Notifications State
+  // Lembretes de Treino
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [reminderHour, setReminderHour] = useState(18);
   const [reminderMinute, setReminderMinute] = useState(0);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [notifDicas, setNotifDicas] = useState(true);
 
-  useEffect(() => {
-    if (user?.id) {
-      planoApi.getUserPlan(user.id).then(d => setPlanoTipo(d.plano as "free" | "pago")).catch(() => {});
-      userApi.getProfile(user.id).then(d => setProfile(d)).catch(() => {});
-    }
-  }, [user]);
+  // Reload data on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        planoApi.getUserPlan(user.id).then(d => setPlanoTipo(d.plano as "free" | "pago")).catch(() => {});
+        userApi.getProfile(user.id).then(d => setProfile(d)).catch(() => {});
+      }
+    }, [user])
+  );
 
   useEffect(() => {
     AsyncStorage.multiGet([
@@ -233,7 +207,9 @@ export default function Settings() {
             if (data.url) await WebBrowser.openBrowserAsync(data.url);
           } catch (err: any) {
             Alert.alert("Erro", err?.message || "Não foi possível abrir o portal.");
-          } finally { setCancelLoading(false); }
+          } finally {
+            setCancelLoading(false);
+          }
         },
       },
     ]);
@@ -261,19 +237,18 @@ export default function Settings() {
       <PageHeader />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: safeBottom + 60 }}>
-
+        
         {/* ── CONTA DO ATLETA ── */}
         <SectionHeader title="Conta" />
         <Card padding={spacing.lg} style={{ marginBottom: 24, flexDirection: "row", alignItems: "center" }}>
           <View style={{
-            width: 52, height: 52, borderRadius: R.lg,
+            width: 52,
+            height: 52,
+            borderRadius: R.lg,
             backgroundColor: theme.accent,
-            justifyContent: "center", alignItems: "center", marginRight: 16,
-            shadowColor: theme.accent,
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.25,
-            shadowRadius: 8,
-            elevation: 4,
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: 16,
           }}>
             <Text variant="title3" style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>
               {userDisplayName.charAt(0).toUpperCase()}
@@ -290,8 +265,9 @@ export default function Settings() {
         </Card>
 
         <Card padding={0} style={{ marginBottom: 24, overflow: "hidden" }}>
-          <Row
-            icon="person-outline" iconBg="#0A84FF"
+          <ListItem
+            icon="person-outline"
+            iconBg="#0A84FF"
             label="Editar Perfil"
             subtitle="Idade, peso, altura e nome"
             onPress={() => router.push("/edit-profile")}
@@ -314,17 +290,30 @@ export default function Settings() {
         {/* ── NOTIFICAÇÕES ── */}
         <SectionHeader title="Notificações" />
         <Card padding={0} style={{ marginBottom: 24, overflow: "hidden" }}>
-          <Row
-            icon="barbell-outline" iconBg="#0A84FF"
+          <ListItem
+            icon="barbell-outline"
+            iconBg="#0A84FF"
             label="Lembretes de Treino"
             subtitle="Recebe lembretes diários"
-            rightEl={<Switch value={notificationsEnabled} onValueChange={handleToggleNotifications} trackColor={{ false: theme.backgroundTertiary, true: theme.accentGreen }} thumbColor="#fff" ios_backgroundColor={theme.backgroundTertiary} />}
+            rightEl={
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  handleToggleNotifications(val);
+                }}
+                trackColor={{ false: theme.backgroundTertiary, true: theme.accentGreen }}
+                thumbColor="#fff"
+                ios_backgroundColor={theme.backgroundTertiary}
+              />
+            }
           />
           {notificationsEnabled && (
             <>
               <Divider marginHorizontal={spacing.lg} />
-              <Row
-                icon="alarm-outline" iconBg="#30D158"
+              <ListItem
+                icon="alarm-outline"
+                iconBg="#30D158"
                 label="Hora do Lembrete"
                 subtitle={`${String(reminderHour).padStart(2, "0")}:${String(reminderMinute).padStart(2, "0")}`}
                 onPress={() => setShowTimePicker(true)}
@@ -332,11 +321,23 @@ export default function Settings() {
             </>
           )}
           <Divider marginHorizontal={spacing.lg} />
-          <Row
-            icon="bulb-outline" iconBg="#F59E0B"
+          <ListItem
+            icon="bulb-outline"
+            iconBg="#F59E0B"
             label="Dicas de Treino"
             subtitle="Conteúdo personalizado"
-            rightEl={<Switch value={notifDicas} onValueChange={setNotifDicas} trackColor={{ false: theme.backgroundTertiary, true: theme.accent }} thumbColor="#fff" ios_backgroundColor={theme.backgroundTertiary} />}
+            rightEl={
+              <Switch
+                value={notifDicas}
+                onValueChange={(val) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setNotifDicas(val);
+                }}
+                trackColor={{ false: theme.backgroundTertiary, true: theme.accent }}
+                thumbColor="#fff"
+                ios_backgroundColor={theme.backgroundTertiary}
+              />
+            }
           />
         </Card>
 
@@ -359,8 +360,9 @@ export default function Settings() {
               </View>
             </LinearGradient>
           ) : (
-            <Row
-              icon="sparkles-outline" iconBg="#8B5CF6"
+            <ListItem
+              icon="sparkles-outline"
+              iconBg="#8B5CF6"
               label="Desbloquear GoLift Pro"
               subtitle="IA · relatórios · planos personalizados"
               onPress={() => router.push("/upgrade")}
@@ -369,8 +371,9 @@ export default function Settings() {
           <Divider marginHorizontal={spacing.lg} />
           {planoTipo === "pago" && (
             <>
-              <Row
-                icon="card-outline" iconBg="#FF3B30"
+              <ListItem
+                icon="card-outline"
+                iconBg="#FF3B30"
                 label="Gerir Subscrição"
                 subtitle="Alterar ou cancelar no Stripe"
                 onPress={handleManageSubscription}
@@ -379,8 +382,9 @@ export default function Settings() {
               <Divider marginHorizontal={spacing.lg} />
             </>
           )}
-          <Row
-            icon="sparkles-outline" iconBg="#8B5CF6"
+          <ListItem
+            icon="sparkles-outline"
+            iconBg="#8B5CF6"
             label="Planos e Preços"
             subtitle="Compara os planos disponíveis"
             onPress={() => router.push("/upgrade")}
@@ -390,27 +394,29 @@ export default function Settings() {
         {/* ── SOBRE ── */}
         <SectionHeader title="Sobre" />
         <Card padding={0} style={{ marginBottom: 24, overflow: "hidden" }}>
-          <Row icon="help-circle-outline" iconBg="#F97316" label="Centro de Ajuda" onPress={() => Alert.alert("Ajuda", "Centro de ajuda em breve. Contacta-nos em suporte@golift.pt")} />
+          <ListItem icon="help-circle-outline" iconBg="#F97316" label="Centro de Ajuda" onPress={() => Alert.alert("Ajuda", "Centro de ajuda em breve. Contacta-nos em suporte@golift.pt")} />
           <Divider marginHorizontal={spacing.lg} />
-          <Row icon="document-text-outline" iconBg="#8B5CF6" label="Política de Privacidade" onPress={() => Alert.alert("Privacidade", "Disponível em golift.pt/privacidade")} />
+          <ListItem icon="document-text-outline" iconBg="#8B5CF6" label="Política de Privacidade" onPress={() => Alert.alert("Privacidade", "Disponível em golift.pt/privacidade")} />
           <Divider marginHorizontal={spacing.lg} />
-          <Row icon="shield-checkmark-outline" iconBg="#10B981" label="Termos de Serviço" onPress={() => Alert.alert("Termos", "Disponível em golift.pt/termos")} />
+          <ListItem icon="shield-checkmark-outline" iconBg="#10B981" label="Termos de Serviço" onPress={() => Alert.alert("Termos", "Disponível em golift.pt/termos")} />
           <Divider marginHorizontal={spacing.lg} />
-          <Row icon="information-circle-outline" iconBg="#0A84FF" label="Versão da App" rightEl={<Text variant="callout" color="textTertiary">1.0.0</Text>} />
+          <ListItem icon="information-circle-outline" iconBg="#0A84FF" label="Versão da App" rightEl={<Text variant="callout" color="textTertiary">1.0.0</Text>} />
         </Card>
 
         {/* ── AÇÕES CRÍTICAS ── */}
         <SectionHeader title="Ações" />
         <Card padding={0} style={{ overflow: "hidden", marginBottom: 24 }}>
-          <Row
-            icon="log-out-outline" iconBg="#FF3B30"
+          <ListItem
+            icon="log-out-outline"
+            iconBg="#FF3B30"
             label="Terminar Sessão"
             destructive
             onPress={handleLogout}
           />
           <Divider marginHorizontal={spacing.lg} />
-          <Row
-            icon="trash-outline" iconBg="#FF3B30"
+          <ListItem
+            icon="trash-outline"
+            iconBg="#FF3B30"
             label="Eliminar Conta"
             subtitle="Remove todos os teus dados permanentemente"
             destructive
@@ -441,7 +447,10 @@ export default function Settings() {
               <View style={{ alignItems: "center" }}>
                 <Text variant="caption" color="textTertiary" style={{ marginBottom: spacing.sm }}>Hora</Text>
                 <Pressable
-                  onPress={() => handleTimeChange((reminderHour + 1) % 24, reminderMinute)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleTimeChange((reminderHour + 1) % 24, reminderMinute);
+                  }}
                   accessibilityRole="button"
                   style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
                 >
@@ -453,7 +462,10 @@ export default function Settings() {
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => handleTimeChange(reminderHour === 0 ? 23 : reminderHour - 1, reminderMinute)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleTimeChange(reminderHour === 0 ? 23 : reminderHour - 1, reminderMinute);
+                  }}
                   accessibilityRole="button"
                   style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
                 >
@@ -466,7 +478,10 @@ export default function Settings() {
               <View style={{ alignItems: "center" }}>
                 <Text variant="caption" color="textTertiary" style={{ marginBottom: spacing.sm }}>Min</Text>
                 <Pressable
-                  onPress={() => handleTimeChange(reminderHour, (reminderMinute + 5) % 60)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleTimeChange(reminderHour, (reminderMinute + 5) % 60);
+                  }}
                   accessibilityRole="button"
                   style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
                 >
@@ -478,7 +493,10 @@ export default function Settings() {
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => handleTimeChange(reminderHour, reminderMinute === 0 ? 55 : reminderMinute - 5)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    handleTimeChange(reminderHour, reminderMinute === 0 ? 55 : reminderMinute - 5);
+                  }}
                   accessibilityRole="button"
                   style={({ pressed }) => ({ padding: spacing.sm, opacity: pressed ? 0.5 : 1 })}
                 >

@@ -44,7 +44,7 @@ function CustomTabBar({ state, descriptors, navigation, hideTabBar }: any) {
 
   const iconNameMap = {
     index: "home" as const,
-    communities: "people" as const,
+    coach: "sparkles" as const,
     metrics: "stats-chart" as const,
     profile: "person" as const,
   };
@@ -155,7 +155,7 @@ export default function TabsLayout() {
         options={{}}
       />
       <Tabs.Screen 
-        name="communities" 
+        name="coach" 
         options={{}}
       />
       <Tabs.Screen 

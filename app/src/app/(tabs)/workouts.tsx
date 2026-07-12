@@ -14,7 +14,6 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "../../contexts/AuthContext";
-import { useCommunities } from "../../contexts/CommunitiesContext";
 import { workoutApi, exerciseApi, planoApi } from "../../services/api";
 import { useTheme } from "../../styles/theme";
 import { useAndroidInsets } from "../../hooks/useAndroidInsets";
@@ -26,43 +25,10 @@ export default function Workouts() {
   const { user } = useAuth();
   const theme = useTheme();
   const { paddingTop: safeTop, paddingBottom: safeBottom } = useAndroidInsets();
-  const { userCommunities, sendMessage } = useCommunities();
   const [refreshing, setRefreshing] = useState(false);
   const [myWorkouts, setMyWorkouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [planType, setPlanType] = useState<"free" | "pago">("free");
-
-  // Partilha de treino
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [shareWorkoutData, setShareWorkoutData] = useState<any>(null);
-  const [sharingToComm, setSharingToComm] = useState(false);
-  const [copyingWorkout, setCopyingWorkout] = useState(false);
-  // Copiar treino para lista do usuário
-  async function copyWorkoutToUserList() {
-    if (!shareWorkoutData) return;
-    setCopyingWorkout(true);
-    try {
-      // Buscar exercícios do treino
-      const resp = await workoutApi.getWorkoutExercises(shareWorkoutData.id_treino).catch(() => ({ exercicios: [] }));
-      const exerciseIds = (resp?.exercicios || []).map((ex: any) => ex.id_exercicio);
-      // Verificar se já existe um treino com o mesmo nome
-      const exists = myWorkouts.some((w: any) => w.nome === shareWorkoutData.nome);
-      let newName = shareWorkoutData.nome;
-      if (exists) {
-        // Adicionar sufixo para evitar duplicatas
-        newName = `${shareWorkoutData.nome} (Cópia)`;
-      }
-      await workoutApi.createWorkout(user!.id, newName, exerciseIds);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Sucesso", "Treino copiado para sua lista!");
-      setShowShareModal(false);
-      loadData();
-    } catch (error: any) {
-      Alert.alert("Erro", error.message || "Erro ao copiar treino");
-    } finally {
-      setCopyingWorkout(false);
-    }
-  }
 
   // Modal criar / editar treino
   const [showCreateOptions, setShowCreateOptions] = useState(false);
@@ -279,41 +245,6 @@ export default function Workouts() {
     );
   }
 
-  function handleShareTemplate(workout: any) {
-    if (userCommunities.length === 0) {
-      Alert.alert("Sem comunidades", "Entra numa comunidade para poderes partilhar treinos.");
-      return;
-    }
-    setShareWorkoutData(workout);
-    setShowShareModal(true);
-  }
-
-  async function sendShareToCommunity(community: any) {
-    if (!shareWorkoutData || sharingToComm) return;
-    setSharingToComm(true);
-    try {
-      const resp = await workoutApi.getWorkoutExercises(shareWorkoutData.id_treino).catch(() => ({ exercicios: [] }));
-      const exercicios = (resp?.exercicios || []).map((ex: any) => ({
-        id: ex.id_exercicio,
-        nome: ex.nome,
-        grupo_tipo: ex.grupo_tipo || null,
-      }));
-      const payload = JSON.stringify({
-        tipo: "template",
-        nome: shareWorkoutData.nome,
-        exercicios,
-      });
-      await sendMessage(community.id, `🏋️__SHARE__${payload}`);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setShowShareModal(false);
-      Alert.alert("Partilhado!", `Treino enviado para ${community.nome}`);
-    } catch {
-      Alert.alert("Erro", "Não foi possível partilhar o treino");
-    } finally {
-      setSharingToComm(false);
-    }
-  }
-
   if (loading) {
     return <WorkoutsScreenSkeleton />;
   }
@@ -388,15 +319,6 @@ export default function Workouts() {
 
                       {/* Ações */}
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                        {!workout.is_ia && (
-                          <TouchableOpacity
-                            onPress={(e) => { e.stopPropagation?.(); handleShareTemplate(workout); }}
-                            style={{ padding: 10 }}
-                            accessibilityLabel="Partilhar treino"
-                          >
-                            <Ionicons name="share-social-outline" size={19} color={theme.textSecondary} />
-                          </TouchableOpacity>
-                        )}
                         <TouchableOpacity
                           onPress={(e) => { e.stopPropagation?.(); openEditModal(workout); }}
                           style={{ padding: 10 }}
@@ -755,96 +677,6 @@ export default function Workouts() {
         </View>
       </Modal>
 
-      {/* Modal: Partilhar Template de Treino */}
-      <Modal
-        visible={showShareModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowShareModal(false)}
-      >
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.55)" }}>
-          <View style={{ backgroundColor: theme.backgroundSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: "70%" }}>
-            <View style={{ width: 36, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginTop: 12, marginBottom: 20 }} />
-
-            <View style={{ flexDirection: "row", alignItems: "flex-start", paddingHorizontal: spacing.xxl, marginBottom: 20 }}>
-              <View style={{ flex: 1 }}>
-                <Text variant="title2">Partilhar Treino</Text>
-                <Text variant="callout" color="textSecondary">
-                  {shareWorkoutData?.nome}
-                </Text>
-                {/* Show all exercise names */}
-                {shareWorkoutData?.exercicios && (
-                  <View style={{ marginTop: 8 }}>
-                    <Text variant="footnote" color="textSecondary">Exercícios:</Text>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                      {shareWorkoutData.exercicios.map((ex: any, idx: number) => (
-                        <View key={ex.id || idx} style={{ backgroundColor: theme.backgroundTertiary, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6, marginBottom: 6 }}>
-                          <Text style={{ color: theme.text, fontSize: 12 }}>{ex.nome}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-              <Pressable
-                onPress={() => setShowShareModal(false)}
-                accessibilityLabel="Fechar"
-                accessibilityRole="button"
-                style={({ pressed }) => ({ backgroundColor: theme.backgroundTertiary, borderRadius: 12, padding: 8, opacity: pressed ? 0.7 : 1 })}
-              >
-                <Ionicons name="close" size={18} color={theme.text} />
-              </Pressable>
-            </View>
-
-            <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginHorizontal: spacing.xxl, marginBottom: 10 }}>
-              Escolhe uma comunidade
-            </Text>
-
-            <FlatList
-              data={userCommunities}
-              keyExtractor={(item) => String(item.id)}
-              style={{ flexShrink: 1 }}
-              contentContainerStyle={{ paddingHorizontal: spacing.xxl, paddingBottom: safeBottom + 20 }}
-              ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => sendShareToCommunity(item)}
-                  disabled={sharingToComm}
-                  accessibilityLabel={`Partilhar com ${item.nome}`}
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    backgroundColor: theme.backgroundTertiary,
-                    borderRadius: radius.lg,
-                    padding: 14,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: theme.accent + "18", justifyContent: "center", alignItems: "center", marginRight: 12 }}>
-                    <Ionicons name="people" size={20} color={theme.accent} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontWeight: "700", fontSize: 14 }}>{item.nome}</Text>
-                    <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>{item.membros} membros</Text>
-                  </View>
-                  {sharingToComm ? (
-                    <ActivityIndicator size="small" color={theme.accent} />
-                  ) : (
-                    <Ionicons name="send" size={18} color={theme.accent} />
-                  )}
-                </Pressable>
-              )}
-            />
-            {/* Copy workout to user's list if not IA */}
-            {shareWorkoutData && !shareWorkoutData.is_ia && (
-              <View style={{ paddingHorizontal: spacing.xxl, paddingBottom: safeBottom + 20 }}>
-                <Button variant="primary" loading={copyingWorkout} onPress={copyWorkoutToUserList}>Copiar treino para minha lista</Button>
-              </View>
-            )}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

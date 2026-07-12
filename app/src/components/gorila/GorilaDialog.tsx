@@ -19,6 +19,18 @@ const GORILA_SIZE = 120
 const GORILA_PEEK = 100
 const GORILA_DENTRO = GORILA_SIZE - GORILA_PEEK
 
+const GORILA_IMAGES = {
+  idle: require('../../../assets/images/Gorila.png'),
+  greeting: require('../../../assets/images/Gorila.png'),
+  talking: require('../../../assets/images/Gorila.png'),
+  celebrating: require('../../../assets/images/Gorila.png'),
+  concerned: require('../../../assets/images/Gorila_concerned.png'),
+  challenging: require('../../../assets/images/Gorila.png'),
+  sleeping: require('../../../assets/images/Gorila_sleeping.png'),
+  sad: require('../../../assets/images/Gorila_concerned.png'),
+  angry: require('../../../assets/images/Gorila_angry.png'),
+};
+
 export default function GorilaDialog() {
   const { message, isVisible, hide } = useGorila()
   const theme = useTheme()
@@ -38,15 +50,23 @@ export default function GorilaDialog() {
       isClosing.current = false
       Animated.parallel([
         Animated.spring(slideAnim, { toValue: 0, damping: 18, stiffness: 100, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
       ]).start()
 
-      if (message.id !== prevId.current) {
+      // Pequeno bounce animado do gorila a entrar
+      if (prevId.current !== message.id) {
         prevId.current = message.id
+        gorilaBounce.setValue(0)
         Animated.sequence([
           Animated.timing(gorilaBounce, { toValue: 1, duration: 150, useNativeDriver: true }),
           Animated.spring(gorilaBounce, { toValue: 0, damping: 8, stiffness: 80, useNativeDriver: true }),
         ]).start()
+      }
+
+      // Auto-fechar opcional
+      if (message.autoFechar) {
+        const t = setTimeout(() => hide(), message.autoFechar)
+        return () => clearTimeout(t)
       }
     } else {
       Animated.parallel([
@@ -54,20 +74,27 @@ export default function GorilaDialog() {
         Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
       ]).start()
     }
-  }, [isVisible, message?.id])
+  }, [isVisible, message])
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 10,
-      onPanResponderMove: (_, g) => {
-        if (g.dy > 0 && !isClosing.current) slideAnim.setValue(g.dy)
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          slideAnim.setValue(gestureState.dy)
+        }
       },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 100 || g.vy > 0.5) {
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 80 || gestureState.vy > 0.5) {
           isClosing.current = true
-          hide()
+          Animated.parallel([
+            Animated.timing(slideAnim, { toValue: SCREEN_HEIGHT, duration: 200, useNativeDriver: true }),
+            Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+          ]).start(() => {
+            hide()
+          })
         } else {
-          Animated.spring(slideAnim, { toValue: 0, damping: 18, stiffness: 100, useNativeDriver: true }).start()
+          Animated.spring(slideAnim, { toValue: 0, friction: 5, useNativeDriver: true }).start()
         }
       },
     })
@@ -106,7 +133,7 @@ export default function GorilaDialog() {
       >
         {/* Gorila a espreitar */}
         <Animated.Image
-          source={require('../../../assets/images/Gorila.png')}
+          source={GORILA_IMAGES[message.estado] || GORILA_IMAGES.idle}
           style={[
             styles.gorilaImagem,
             {

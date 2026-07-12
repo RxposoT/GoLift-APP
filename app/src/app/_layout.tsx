@@ -8,7 +8,6 @@ import { Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PostHogProvider, usePostHog } from "posthog-react-native";
 import { AuthProvider } from "../contexts/AuthContext";
-import { CommunitiesProvider } from "../contexts/CommunitiesContext";
 import { ThemeProvider, useTheme, useThemePreference } from "../contexts/ThemeContext";
 import { GorilaProvider } from "../components/gorila/GorilaContext";
 import GorilaDialog from "../components/gorila/GorilaDialog";
@@ -111,7 +110,6 @@ function RootLayoutContent() {
   return (
     <AuthProvider>
       <GorilaProvider>
-        <CommunitiesProvider>
           <StatusBar style={isDark ? "light" : "dark"} />
           <Stack
             screenOptions={{
@@ -185,7 +183,6 @@ function RootLayoutContent() {
             </View>
           )}
           <GorilaDialog />
-        </CommunitiesProvider>
       </GorilaProvider>
     </AuthProvider>
   );
