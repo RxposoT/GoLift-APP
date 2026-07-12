@@ -10,14 +10,26 @@ const buildQuery = (result: any) => {
   return q;
 };
 
+const buildRpcQuery = (resultFn: () => any) => {
+  const q: any = {};
+  const chain = ["order", "limit"];
+  chain.forEach((m) => { q[m] = jest.fn().mockReturnValue(q); });
+  q.then = (onFulfilled: any) => Promise.resolve(resultFn()).then(onFulfilled);
+  return q;
+};
+
 const mockRpc = jest.fn();
+let mockRpcResult: any = { data: [], error: null };
 let mockFromResult: any = { data: [], error: null };
 const mockFrom = jest.fn(() => buildQuery(mockFromResult));
 
 jest.mock("../../../src/lib/supabase", () => ({
   supabase: {
     from: (...args: any[]) => (mockFrom as any)(...args),
-    rpc: (...args: any[]) => (mockRpc as any)(...args),
+    rpc: (...args: any[]) => {
+      (mockRpc as any)(...args);
+      return buildRpcQuery(() => mockRpcResult);
+    },
   },
 }));
 
@@ -25,6 +37,7 @@ describe("metricsApi", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFromResult = { data: [], error: null };
+    mockRpcResult = { data: [], error: null };
   });
 
   describe("getHistory", () => {
@@ -64,12 +77,12 @@ describe("metricsApi", () => {
 
   describe("getRecords", () => {
     it("calls RPC and maps response", async () => {
-      mockRpc.mockResolvedValue({
+      mockRpcResult = {
         data: [
           { exercise_name: "Bench Press", peso: 100, data_serie: "2024-06-01" },
         ],
         error: null,
-      });
+      };
 
       const result = await metricsApi.getRecords("user-1");
 
@@ -80,7 +93,7 @@ describe("metricsApi", () => {
     });
 
     it("returns empty array on error", async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: "fail" } });
+      mockRpcResult = { data: null, error: { message: "fail" } };
       const result = await metricsApi.getRecords("user-1");
       expect(result).toEqual([]);
     });
@@ -88,10 +101,10 @@ describe("metricsApi", () => {
 
   describe("getStreak", () => {
     it("returns streak data from RPC", async () => {
-      mockRpc.mockResolvedValue({
+      mockRpcResult = {
         data: { streak: 5, maxStreak: 10 },
         error: null,
-      });
+      };
 
       const result = await metricsApi.getStreak("user-1");
 
@@ -105,7 +118,7 @@ describe("metricsApi", () => {
     });
 
     it("returns fallback values on error", async () => {
-      mockRpc.mockResolvedValue({ data: null, error: { message: "fail" } });
+      mockRpcResult = { data: null, error: { message: "fail" } };
 
       const result = await metricsApi.getStreak("user-1");
       expect(result).toEqual({

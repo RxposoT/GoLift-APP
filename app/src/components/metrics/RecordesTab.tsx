@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Pressable, Modal, ActivityIndicator, ScrollView, Dimensions } from "react-native";
+import { View, Pressable, Modal, ActivityIndicator, ScrollView, Dimensions, PanResponder } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, Circle, Line, Text as SvgText } from "react-native-svg";
 import { metricsApi } from "../../services/api";
@@ -21,7 +21,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  // Group records by exercise to find top weights
+  // Group records by exercise to find top weights, and only take the last 3 records
   const exercisesGrouped = React.useMemo(() => {
     return Object.entries(
       records.reduce((acc: any, rec: any) => {
@@ -40,7 +40,9 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
         peso: best.peso || best.weight,
         data: best.data_serie || best.data,
       };
-    }).sort((a, b) => b.peso - a.peso);
+    })
+    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()) // Sort by most recent
+    .slice(0, 3); // Load only the last 3 records
   }, [records]);
 
   async function handleExerciseClick(id_exercicio: number, nome: string) {
@@ -109,6 +111,20 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
 
     return { points, yMin, yMax };
   }, [history]);
+
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 80) {
+          setShowModal(false);
+        }
+      },
+    })
+  ).current;
 
   return (
     <View style={{ paddingHorizontal: 24, marginBottom: 20 }}>
@@ -187,6 +203,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
         </View>
       )}
 
+
       {/* Modal - Histórico de Recorde com Gráfico Vetorial */}
       <Modal
         visible={showModal}
@@ -194,52 +211,56 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
         animationType="slide"
         onRequestClose={() => setShowModal(false)}
       >
-        <View style={{
-          flex: 1,
-          justifyContent: "flex-end",
-          backgroundColor: "rgba(0,0,0,0.6)",
-        }}>
-          <View style={{
-            backgroundColor: theme.background,
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            paddingTop: 8,
-            paddingBottom: 36,
-            maxHeight: "85%",
-          }}>
-            {/* Drag indicator */}
-            <View style={{
-              width: 40,
-              height: 5,
-              borderRadius: 2.5,
-              backgroundColor: theme.backgroundTertiary,
-              alignSelf: "center",
-              marginBottom: 20,
-            }} />
+        <Pressable
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            backgroundColor: "rgba(0,0,0,0.6)",
+          }}
+          onPress={() => setShowModal(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.background,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              paddingBottom: 36,
+              maxHeight: "85%",
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Header com Drag Gesture */}
+            <View
+              {...panResponder.panHandlers}
+              style={{
+                paddingTop: 12,
+                paddingBottom: 16,
+                alignItems: "center",
+                backgroundColor: theme.background,
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+              }}
+            >
+              {/* Drag indicator */}
+              <View style={{
+                width: 40,
+                height: 5,
+                borderRadius: 2.5,
+                backgroundColor: theme.backgroundTertiary,
+                marginBottom: 16,
+              }} />
 
-            {/* Header */}
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, marginBottom: 16 }}>
-              <View style={{ flex: 1, marginRight: 16 }}>
-                <Text style={{ fontSize: 11, fontWeight: "700", color: theme.accent, letterSpacing: 1, textTransform: "uppercase" }}>
-                  Histórico de Recordes
-                </Text>
-                <Text variant="title2" style={{ fontSize: 20, marginTop: 2 }}>
-                  {selectedEx?.nome}
-                </Text>
+              {/* Header Title */}
+              <View style={{ width: "100%", paddingHorizontal: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: theme.accent, letterSpacing: 1, textTransform: "uppercase" }}>
+                    Histórico de Recordes
+                  </Text>
+                  <Text variant="title2" style={{ fontSize: 20, marginTop: 2 }}>
+                    {selectedEx?.nome}
+                  </Text>
+                </View>
               </View>
-              <Pressable
-                onPress={() => setShowModal(false)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: theme.backgroundTertiary,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Ionicons name="close" size={20} color={theme.text} />
-              </Pressable>
             </View>
 
             {loadingHistory ? (
@@ -290,7 +311,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
                                     fontWeight="bold"
                                     textAnchor="end"
                                   >
-                                    {val}k
+                                    {val}kg
                                   </SvgText>
                                 </React.Fragment>
                               );
@@ -376,8 +397,8 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
                 )}
               </ScrollView>
             )}
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );

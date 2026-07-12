@@ -26,7 +26,9 @@ export const metricsApi = {
 
   getRecords: async (userId: string) => {
     const { data, error } = await supabase
-      .rpc("get_user_records", { p_user_id: userId });
+      .rpc("get_user_records", { p_user_id: userId })
+      .order("data_serie", { ascending: false })
+      .limit(3);
 
     if (error) return [];
     return (data || []).map((r: any) => ({
