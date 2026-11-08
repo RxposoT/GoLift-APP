@@ -1,5 +1,7 @@
 // Carrega as variáveis de ambiente do ficheiro .env para o process.env
 require('dotenv').config();
+const { validateRuntimeEnv } = require('./runtime');
+const runtime = validateRuntimeEnv(process.env);
 
 // Objeto centralizado que contém todas as variáveis de ambiente da aplicação
 // Cada propriedade tem um valor por omissão seguro para desenvolvimento
@@ -14,6 +16,7 @@ const env = {
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID,
   SERVER_URL: process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3001}`,
+  ...runtime,
 };
 
 // Valida que as variáveis obrigatórias estão definidas
