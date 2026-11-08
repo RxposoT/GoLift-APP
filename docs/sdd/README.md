@@ -1,6 +1,6 @@
 # GoLift — Índice SDD
 
-Registo de preparação em 2026-11-08, mantido pelo A0. Publicar este índice depois de integrar os documentos das cinco unidades abaixo. A0 atualiza os estados e os SHAs na revisão final do PR.
+Registo operacional em 2026-11-08, mantido pelo A0. As cinco unidades documentais foram recuperadas em PRs separados.
 
 O objetivo acordado é uma beta interna iPhone/TestFlight com staging isolado, pagamentos sandbox e Coach com sugestões gerais identificadas. Os documentos preservam o estado histórico Draft e as decisões propostas. Este índice regista o estado operacional de revisão, implementação e validação de cada unidade.
 
@@ -10,9 +10,9 @@ O objetivo acordado é uma beta interna iPhone/TestFlight com staging isolado, p
 |---|---|---|
 | GL-001 Segurança — A1 | [Spec](GL-001/spec.md) · [Plano](GL-001/plan.md) · [Tarefas](GL-001/tasks.md) | Documentação integrada no PR #12. Contratos Draft, com dependências de autorização, dados e migrações por fechar. |
 | GL-002 Toolchain e CI — A2 | [Spec](GL-002/spec.md) · [Plano](GL-002/plan.md) · [Tarefas](GL-002/tasks.md) | Toolchain/CI integradas nos PRs #8/#9. Evidência da base integrada com 37 testes app e 9 backend aprovados. Validação nativa e TestFlight pendentes. Documentação integrada no PR #13. |
-| GL-003 Backend e contratos — A3 | [Spec](GL-003/spec.md) · [Plano](GL-003/plan.md) · [Tarefas](GL-003/tasks.md) | Fatia P0 GL-003A em ae53a8f30895de18df4fbb19cc278e3c79ba6e15, aprovada pelo A10 e com integração pendente. GL-003B permanece Draft e depende de GL-001/GL-005. PR documental #14 aberto à preparação. |
-| GL-004 Pagamentos sandbox — A4 | [Spec](GL-004/spec.md) · [Plano](GL-004/plan.md) · [Tarefas](GL-004/tasks.md) | Draft dependente da autoridade de direitos, ligação conta/customer/subscrição e persistência reconciliada. Importação documental segue GL-003. |
-| GL-005 Dados e offline — A5 | [Spec](GL-005/spec.md) · [Plano](GL-005/plan.md) · [Tarefas](GL-005/tasks.md) | Draft dependente de autorização, baseline de migrações e contratos de operações. Importação documental segue GL-004. |
+| GL-003 Backend e contratos — A3 | [Spec](GL-003/spec.md) · [Plano](GL-003/plan.md) · [Tarefas](GL-003/tasks.md) | Fatia P0 GL-003A integrada no PR #18 com revisão A10, 29 testes backend e CI aprovada. GL-003B permanece Draft e depende de GL-001/GL-005. Documentação integrada no PR #14. |
+| GL-004 Pagamentos sandbox — A4 | [Spec](GL-004/spec.md) · [Plano](GL-004/plan.md) · [Tarefas](GL-004/tasks.md) | Draft dependente da autoridade de direitos, ligação conta/customer/subscrição e persistência reconciliada. Documentação integrada no PR #15. |
+| GL-005 Dados e offline — A5 | [Spec](GL-005/spec.md) · [Plano](GL-005/plan.md) · [Tarefas](GL-005/tasks.md) | Draft dependente de autorização, baseline de migrações e contratos de operações. Documentação integrada no PR #16. Baseline e validação BD acompanhadas na issue #17. |
 
 Cada unidade contém critérios de aceitação, dependências e tarefas. Os estados operacionais evoluem mediante revisão e evidências anexadas ao PR. Integração documental, integração de código e validação da beta têm gates próprios.
 
@@ -28,8 +28,8 @@ As branches main/develop estão protegidas com PR, CI Gate, Workflow Governance,
 
 ## Ordem próxima
 
-1. Integrar os cinco conjuntos documentais e atualizar este índice com os PRs/SHA finais antes da publicação.
-2. Integrar GL-003A após revisão do head atualizado e CI, mantendo a evidência de segurança e os gates de staging.
+1. Manter os cinco conjuntos documentais reconciliados com as evidências de implementação.
+2. Validar GL-003A em staging com PostgREST real, contas sintéticas A/B e revisão dos caches antigos antes da beta.
 3. Fechar os contratos de autorização GL-001 e preparar a implementação em fatias pequenas, com dados sintéticos e validação isolada.
 4. Resolver infraestrutura e orçamento de staging, concluir a validação nativa da toolchain e ensaiar o percurso TestFlight interno.
 5. Ratificar e implementar GL-004 sandbox, seguido das dependências de integridade GL-005/GL-003B. Cada contrato partilhado tem um responsável e consumidores identificados.
@@ -49,3 +49,4 @@ A10 faz a revisão transversal dos candidatos integrados e das evidências. Uplo
 
 - Infraestrutura isolada e orçamento de staging precisam de confirmação antes do provisionamento. Acompanhar na [issue #5](https://github.com/RxposoT/GoLift-APP/issues/5).
 - A identidade de automação e a aprovação elegível de produção precisam de configuração antes da primeira release. Com uma única identidade, os gates de main/production continuam bloqueados. Acompanhar na [issue #6](https://github.com/RxposoT/GoLift-APP/issues/6).
+
