@@ -8,11 +8,11 @@ function step(table, data, filters = [], fields) {
 }
 function feedbackSteps() {
   return [
-    step('workout_sessions', { id: 1, workout_id: 2 }, [['id', 1], ['user_id', actor]], 'id, workout_id'),
-    step('workouts', { id: 2 }, [['id', 2], ['user_id', actor]], 'id'),
+    step('workout_sessions', JSON.parse('{"workout_id":"2"}'), [['id', 1], ['user_id', actor]], 'workout_id::text'),
+    step('workouts', { id: 2 }, [['id', '2'], ['user_id', actor]], 'id'),
     step('profiles', { plano: 'pago' }, [['id', actor]]),
     step('workout_sessions', { workout: { nome: 'Treino A' }, workout_sets: [] },
-      [['id', 1], ['user_id', actor], ['workout_id', 2], ['workout.user_id', actor]]),
+      [['id', 1], ['user_id', actor], ['workout_id', '2'], ['workout.user_id', actor]]),
     step('daily_readiness', null, [['user_id', actor]]),
     step('workout_sessions', [], [['user_id', actor], ['workout.user_id', actor]]),
     step('workout_feedback', [], [['user_id', actor], ['session.user_id', actor], ['session.workout.user_id', actor]]),
@@ -201,6 +201,22 @@ test('numeric string IDs retain compatibility without accepting arbitrary string
       if (config.kind === 'feedback') assert.equal(h.writes[0].payload.session_id, id);
     }
   }
+});
+test('feedback preserves a BIGINT workout FK returned as JSON text through both owner filters', async () => {
+  const sessionId = '9223372036854775807';
+  const workoutId = '9007199254740993';
+  const steps = feedbackSteps();
+  steps[0].result.data = JSON.parse('{"workout_id":"9007199254740993"}');
+  steps[0].filters[0] = ['id', sessionId];
+  steps[1].filters[0] = ['id', workoutId];
+  steps[3].filters[0] = ['id', sessionId];
+  steps[3].filters[2] = ['workout_id', workoutId];
+  steps[7].filters[0] = ['session_id', sessionId];
+  const h = harness('feedback', steps);
+  assert.equal((await h.run({ session_id: sessionId })).sucesso, true);
+  assert.deepEqual(h.calls[1].filters[0], ['id', workoutId]);
+  assert.deepEqual(h.calls[3].filters[2], ['workout_id', workoutId]);
+  assert.equal(h.writes[0].payload.session_id, sessionId);
 });
 function reportSteps() {
   return [

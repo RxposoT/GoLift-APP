@@ -20,8 +20,9 @@ async function submitFeedback(userId, data) {
   }
 
   // Confirmar o agregado por metadados mínimos antes de ler detalhes ou escrever.
+  // O cast PostgREST evita arredondar a FK BIGINT ao descodificar JSON em JavaScript.
   const { data: ownedSession, error: sessionError } = await supabaseAdmin
-    .from('workout_sessions').select('id, workout_id')
+    .from('workout_sessions').select('workout_id::text')
     .eq('id', session_id).eq('user_id', userId).maybeSingle();
   if (sessionError) return { status: 500, erro: 'Erro ao consultar sessão' };
   if (!ownedSession) return { status: 404, erro: 'Sessão não encontrada' };
