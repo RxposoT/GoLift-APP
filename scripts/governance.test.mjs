@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const source = path.dirname(fileURLToPath(import.meta.url));
 
@@ -166,4 +166,41 @@ test('merge content added outside the automatic merge is subject to commit limit
   f.write('hidden.txt', 301);
   f.commit('chore(test): merge features');
   rejected(f.run('range', [f.base, f.git('rev-parse', 'HEAD'), 'develop', 'feat/GL-TEST-example']), /Merge resolution.*exceeds 300/);
+});
+
+test('Git error diagnostics fail closed even with status zero, while warnings remain allowed', t => {
+  const f = fixture(t);
+  f.git('switch', '-c', 'feat/GL-OTHER-example');
+  f.write('other.txt');
+  f.commit('feat(test): other feature');
+  f.git('switch', 'feat/GL-TEST-example');
+  f.write('feature.txt');
+  f.commit('feat(test): feature');
+  f.git('merge', '--no-ff', 'feat/GL-OTHER-example', '-m', 'chore(test): merge features');
+  const head = f.git('rev-parse', 'HEAD');
+  const preload = path.join(path.dirname(f.root), 'fake-git.mjs');
+  for (const diagnostic of [
+    'error: unable to create temporary object directory\n',
+    'warning: preceding diagnostic\nfatal: cannot read merge objects\n',
+    'warning: legitimate message containing error: as ordinary text\n',
+  ]) {
+    writeFileSync(preload, `
+      import childProcess from 'node:child_process';
+      import { syncBuiltinESMExports } from 'node:module';
+      const original = childProcess.spawnSync;
+      childProcess.spawnSync = (command, args, options) => {
+        if (command === 'git' && args.includes('--remerge-diff')) {
+          return { status: 0, signal: null, stdout: '', stderr: ${JSON.stringify(diagnostic)} };
+        }
+        return original(command, args, options);
+      };
+      syncBuiltinESMExports();
+    `);
+    const result = spawnSync(process.execPath, ['--import', pathToFileURL(preload).href,
+      path.join(source, 'governance.mjs'), 'range', f.base, head,
+      'develop', 'feat/GL-TEST-example'], { cwd: f.worktree, encoding: 'utf8' });
+    if (/^(?:error|fatal):/m.test(diagnostic)) rejected(result, /Git show failed/);
+    else assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stderr.includes(diagnostic.trim()), result.stderr);
+  }
 });

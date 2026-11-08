@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +8,14 @@ const protectedBranch = /^(main|develop|release\/.*)$/;
 const generatedFile = /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$/;
 
 function git(...args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }).trim();
+  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  if (result.error) throw result.error;
+  const stderr = result.stderr || '';
+  if (result.status !== 0 || /^\s*(?:error|fatal):/im.test(stderr)) {
+    fail(`Git ${args[0]} failed (${result.signal || result.status}): ${stderr.trim()}`);
+  }
+  if (stderr) process.stderr.write(stderr);
+  return result.stdout.trim();
 }
 
 function fail(message) {
