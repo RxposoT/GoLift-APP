@@ -16,7 +16,7 @@ O objetivo acordado é uma beta interna iPhone/TestFlight com staging isolado, p
 
 Cada unidade contém critérios de aceitação, dependências e tarefas. Os estados operacionais evoluem mediante revisão e evidências anexadas ao PR. Integração documental, integração de código e validação da beta têm gates próprios.
 
-GL-003A cobre ownership e erros nos percursos existentes. A aceitação integral de GL-003 inclui ainda contratos, transações e validação integrada. O saneamento de caches de relatórios anteriores à correção é um gate da baseline de staging antes da beta.
+GL-003A integrada no PR #18 cobre ownership e erros nos percursos existentes. A aceitação integral de GL-003 inclui ainda contratos, transações e validação integrada. O saneamento de caches de relatórios anteriores à correção é um gate da baseline de staging antes da beta.
 
 ## Coordenação e revisão
 
@@ -49,4 +49,12 @@ A10 faz a revisão transversal dos candidatos integrados e das evidências. Uplo
 
 - Infraestrutura isolada e orçamento de staging precisam de confirmação antes do provisionamento. Acompanhar na [issue #5](https://github.com/RxposoT/GoLift-APP/issues/5).
 - A identidade de automação e a aprovação elegível de produção precisam de configuração antes da primeira release. Com uma única identidade, os gates de main/production continuam bloqueados. Acompanhar na [issue #6](https://github.com/RxposoT/GoLift-APP/issues/6).
+
+
+## Validação e gates operacionais
+
+- CI Gate inclui readiness SQL e bloqueia alterações de base de dados até concluir a [baseline #17](https://github.com/RxposoT/GoLift-APP/issues/17).
+- A preparação iOS e os recibos de build constam do [runbook de release](../release-workflow.md), integrado pelos PRs #20/#21.
+- Evidências locais e remotas incluem 37 testes app, 29 backend, 13 de governance, 7 de seleção CI e 8 guards de release.
+- Lint mantém 101 warnings conhecidos. Validação nativa iPhone e configuração dos serviços de staging continuam pendentes.
 
