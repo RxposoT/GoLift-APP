@@ -1,0 +1,2 @@
+#!/bin/sh
+exec node "$(git rev-parse --path-format=absolute --git-common-dir)/golift-hooks/governance.mjs" message "$1"
