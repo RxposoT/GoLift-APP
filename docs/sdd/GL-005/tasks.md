@@ -49,4 +49,3 @@ Estado: planeamento Draft. Todas as caixas estão por executar; a elaboração d
 - [ ] **T28 — A0 com donos:** decidir inclusão explícita de funcionalidades inacabadas, fechar pendências XP/calendário/retenção/baseline e publicar critério de recuperação de builds retiradas. Não abrir fluxos parciais nem reativar permissões vulneráveis. Todos os AC dos fluxos incluídos têm evidência ou permanecem abertos.
 
 Esta lista não autoriza SQL remoto, acesso a dados reais, fornecedor IA/Stripe, instalação, deploy ou publicação. A execução é uma etapa futura após revisão do plano.
-

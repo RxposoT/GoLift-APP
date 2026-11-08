@@ -190,5 +190,3 @@ Rollback funcional conserva migrações aditivas e recibos: desativar o fluxo no
 Os testes acima estão **planeados, não executados**. Mocks/harnesses antigos reproduzem defeitos e não demonstram transações nem persistência em iOS. A10 revê as provas SQL/contratuais e A9 coordena o binário QA.
 
 Dependências finais: A1 revê ACL/FKs/RLS e wrappers definer da app; A3 consome C-GL005-IA-v1 e mantém o contrato HTTP canónico; A4 fornece ledger/constraints de pagamentos separadamente; A6 controla AuthContext/logout/eliminação; A7 ratifica limites/XP/tempo/UX de conflitos e implementa consumidores; A2 fornece testes/toolchain; A0 decide baseline/calendário/retenção e ordem; A10 valida transversalmente. Os campos/assinaturas novos não são gerados sem estes contratos estarem fechados. O acesso a um ambiente ligado, migrações e distribuição continuam fora da autorização desta entrega.
-
-
