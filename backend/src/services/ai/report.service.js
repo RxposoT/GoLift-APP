@@ -35,24 +35,26 @@ function getLastWeekRange() {
 // Gera ou retorna o relatório semanal em cache
 async function getWeeklyReport(userId) {
   // 1. Verificar perfil e plano premium
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('plano, plano_ativo_ate')
     .eq('id', userId)
     .single();
 
+  if (profileError) return { status: 500, erro: 'Erro ao consultar perfil' };
   if (!profile) return { status: 404, erro: 'Utilizador não encontrado' };
   if (!isValidPremium(profile)) return { status: 403, erro: 'Plano GoLift Pro necessário', codigo: 'PLANO_NECESSARIO' };
 
   const { segundaPassada, domingoPassado, semanaInicio } = getLastWeekRange();
 
   // 2. Verificar cache — se já foi gerado esta semana, devolver versão guardada
-  const { data: cached } = await supabaseAdmin
+  const { data: cached, error: cacheError } = await supabaseAdmin
     .from('ai_reports')
     .select('conteudo')
     .eq('user_id', userId)
     .eq('semana_inicio', semanaInicio)
     .maybeSingle();
+  if (cacheError) return { status: 500, erro: 'Erro ao consultar relatório' };
 
   if (cached) {
     return {
@@ -64,16 +66,17 @@ async function getWeeklyReport(userId) {
   }
 
   // 3. Buscar sessões de treino da semana passada
-  const { data: treinos } = await supabaseAdmin
+  const { data: treinos, error: sessionsError } = await supabaseAdmin
     .from('workout_sessions')
     .select(`
       id, data_fim, duracao_segundos,
       workout:workouts!inner(nome)
     `)
-    .eq('user_id', userId)
+    .eq('user_id', userId).eq('workout.user_id', userId)
     .gte('data_fim', segundaPassada.toISOString())
     .lte('data_fim', domingoPassado.toISOString())
     .not('data_fim', 'is', null);
+  if (sessionsError || !treinos) return { status: 500, erro: 'Erro ao consultar sessões' };
 
   // 4. Se não houve treinos, devolver relatório vazio com sugestões genéricas
   if (!treinos || treinos.length === 0) {
@@ -96,11 +99,12 @@ async function getWeeklyReport(userId) {
   }
 
   // 5. Buscar perfil completo para contexto do prompt
-  const { data: perfil } = await supabaseAdmin
+  const { data: perfil, error: contextError } = await supabaseAdmin
     .from('profiles')
     .select('nome, peso, altura, idade, objetivo, peso_alvo')
     .eq('id', userId)
     .single();
+  if (contextError || !perfil) return { status: 500, erro: 'Erro ao consultar perfil' };
 
   // 6. Construir sumário legível dos treinos para o prompt da IA
   const treinosSummary = treinos
@@ -136,10 +140,11 @@ Responde APENAS com JSON válido (sem markdown, sem código blocks) com exatamen
   const geminiResp = await geminiGenerate({ prompt, type: 'report' });
   const relatorio = geminiResp.relatorio || geminiResp;
 
-  await supabaseAdmin.from('ai_reports').upsert(
+  const { data: saved, error: saveError } = await supabaseAdmin.from('ai_reports').upsert(
     { user_id: userId, semana_inicio: semanaInicio, conteudo: relatorio },
     { onConflict: 'user_id,semana_inicio' }
-  );
+  ).select('user_id').single();
+  if (saveError || !saved) return { status: 500, erro: 'Erro ao guardar relatório' };
 
   return { sucesso: true, relatorio, semana_inicio: semanaInicio, cached: false };
 }

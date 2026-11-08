@@ -198,3 +198,44 @@ test('numeric string IDs retain compatibility without accepting arbitrary string
     assert.equal((await h.run(body)).sucesso, true);
   }
 });
+function reportSteps() {
+  return [
+    step('profiles', { plano: 'pago' }, [['id', actor]]),
+    step('ai_reports', null, [['user_id', actor]]),
+    step('workout_sessions', [{ workout: { nome: 'Treino A' }, data_fim: new Date().toISOString() }],
+      [['user_id', actor], ['workout.user_id', actor]]),
+    step('profiles', {}, [['id', actor]]),
+    step('ai_reports', { user_id: actor }),
+  ];
+}
+test('report only uses owned session/workout context and preserves success shape', async () => {
+  const h = harness('report', reportSteps());
+  const result = await h.run();
+  assert.equal(result.sucesso, true);
+  assert.equal(result.cached, false);
+  assert.deepEqual(result.relatorio, h.model);
+  assert.match(result.semana_inicio, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(h.prompts[0], /Treino A/);
+  assert.equal(h.writes[0].payload.user_id, actor);
+});
+test('report database failures never turn into cached/no-data success', async () => {
+  for (let index = 0; index < reportSteps().length; index++) {
+    const steps = reportSteps();
+    steps[index].result = { data: null, error: { message: 'DB unavailable' } };
+    const h = harness('report', steps);
+    assert.equal((await h.run()).status, 500);
+    assert.equal(h.prompts.length, index === 4 ? 1 : 0);
+    assert.equal(h.writes.length, index === 4 ? 1 : 0);
+  }
+});
+test('report empty history is legitimate but zero persisted rows is an error', async () => {
+  let steps = reportSteps();
+  steps[2].result.data = [];
+  let h = harness('report', steps);
+  assert.equal((await h.run()).sucesso, true);
+  assert.equal(h.prompts.length + h.writes.length, 0);
+  steps = reportSteps();
+  steps[4].result.data = null;
+  h = harness('report', steps);
+  assert.equal((await h.run()).status, 500);
+});
