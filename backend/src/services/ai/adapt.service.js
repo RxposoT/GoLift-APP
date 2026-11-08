@@ -4,6 +4,7 @@
 
 const supabaseAdmin = require('../../config/supabase');
 const { geminiGenerate } = require('../gemini.service');
+const { isResourceId } = require('./resource-id');
 
 // Verifica se o utilizador tem plano premium ativo
 function isValidPremium(profile) {
@@ -11,16 +12,25 @@ function isValidPremium(profile) {
 }
 
 // Analisa o estado do utilizador e adapta o treino conforme necessário
-async function adaptWorkout(userId, { workout_id }) {
+async function adaptWorkout(userId, data) {
+  const { workout_id } = data || {};
   if (!workout_id) return { status: 400, erro: 'workout_id em falta' };
+  if (!isResourceId(workout_id)) {
+    return { status: 400, erro: 'workout_id inválido' };
+  }
+  const { data: ownedWorkout, error: ownerError } = await supabaseAdmin
+    .from('workouts').select('id').eq('id', workout_id).eq('user_id', userId).maybeSingle();
+  if (ownerError) return { status: 500, erro: 'Erro ao consultar treino' };
+  if (!ownedWorkout) return { status: 404, erro: 'Treino não encontrado' };
 
   // 1. Verificar perfil e plano — free users recebem resposta não adaptada
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('plano, plano_ativo_ate, treino_dias_semana, treino_nivel, lesoes')
     .eq('id', userId)
     .single();
 
+  if (profileError) return { status: 500, erro: 'Erro ao consultar perfil' };
   if (!profile) return { status: 404, erro: 'Utilizador não encontrado' };
   const temPremium = isValidPremium(profile);
   if (!temPremium) {
@@ -30,29 +40,31 @@ async function adaptWorkout(userId, { workout_id }) {
   // 2. Obter dados de prontidão do dia (check-in matinal)
   const hoje = new Date().toISOString().split('T')[0];
 
-  const { data: readiness } = await supabaseAdmin
+  const { data: readiness, error: readinessError } = await supabaseAdmin
     .from('daily_readiness')
     .select('prontidao_score, sono_horas, sono_qualidade, energia, stress, musculo_dolorido')
     .eq('user_id', userId)
     .eq('data', hoje)
     .maybeSingle();
+  if (readinessError) return { status: 500, erro: 'Erro ao consultar prontidão' };
 
   // 3. Obter histórico recente de dor (últimos 2 feedbacks com dor)
-  const { data: recenteDor } = await supabaseAdmin
+  const { data: recenteDor, error: painError } = await supabaseAdmin
     .from('workout_feedback')
-    .select('dor_zones, dor_intensidade')
-    .eq('user_id', userId)
+    .select('dor_zones, dor_intensidade, session:workout_sessions!inner(workout:workouts!inner(id))')
+    .eq('user_id', userId).eq('session.user_id', userId).eq('session.workout.user_id', userId)
     .not('dor_zones', 'is', null)
     .order('created_at', { ascending: false })
     .limit(2);
+  if (painError || !recenteDor) return { status: 500, erro: 'Erro ao consultar dor recente' };
 
   // 4. Obter exercícios do treino planeado
-  const { data: workout } = await supabaseAdmin
+  const { data: workout, error: workoutError } = await supabaseAdmin
     .from('workouts')
     .select('nome, workout_exercises(exercise_id, exercises(nome, grupo_tipo))')
-    .eq('id', workout_id)
-    .single();
+    .eq('id', workout_id).eq('user_id', userId).maybeSingle();
 
+  if (workoutError) return { status: 500, erro: 'Erro ao consultar treino' };
   if (!workout) return { status: 404, erro: 'Treino não encontrado' };
 
   const exercicios = workout.workout_exercises?.map(we => ({
