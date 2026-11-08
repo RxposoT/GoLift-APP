@@ -1,0 +1,41 @@
+name: Governance
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  governance:
+    name: Workflow Governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full fetch includes trusted origin/develop for release lineage.
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Git policy with disposable repositories
+        run: node --test scripts/governance.test.mjs
+      - name: Test release guards when present
+        run: if [ -d .github/release ]; then node --test .github/release/*.test.cjs; fi
+      - name: Check each commit and the complete PR
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: node scripts/governance.mjs range "$BASE_SHA" "$HEAD_SHA" "$TARGET_BRANCH" "$SOURCE_BRANCH"

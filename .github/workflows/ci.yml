@@ -2,40 +2,159 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, main]
   push:
-    branches: [main]
+    branches: [develop, main]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  quality:
-    name: Lint & Type Check & Test
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.paths.outputs.app }}
+      backend: ${{ steps.paths.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - id: paths
+        name: Select checks for this revision
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          FULL_CHECKS: ${{ github.base_ref == 'main' || github.ref == 'refs/heads/main' }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { execFileSync } = require('node:child_process');
+          const base = process.env.BASE_SHA;
+          const dedicatedChecks = new Set([
+            'scripts/governance.mjs',
+            'scripts/governance.test.mjs',
+            'scripts/worktree.mjs',
+            '.github/workflows/governance.yml',
+            '.github/workflows/eas-build.yml',
+            '.gitignore',
+          ]);
+          let app = false;
+          let backend = false;
+          if (process.env.FULL_CHECKS === 'true' || !base || /^0+$/.test(base)) {
+            app = backend = true;
+          } else {
+            const files = execFileSync('git', ['diff', '--name-only', '-z', base, 'HEAD'], {
+              encoding: 'utf8',
+            }).split('\0').filter(Boolean);
+            for (const file of files) {
+              if (/\.md$/i.test(file)) continue;
+              if (dedicatedChecks.has(file) || file.startsWith('.githooks/') ||
+                  file.startsWith('.github/release/')) continue;
+              if (file.startsWith('app/')) app = true;
+              else if (file.startsWith('backend/')) backend = true;
+              else app = backend = true;
+            }
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `app=${app}\nbackend=${backend}\n`);
+          NODE
+
+  app-quality:
+    name: App quality
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: app
-
+    env:
+      CI: 'true'
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "npm"
+          node-version-file: .nvmrc
+          cache: npm
           cache-dependency-path: app/package-lock.json
-
+      - name: Verify npm version
+        run: test "$(npm --version)" = "10.9.9"
       - name: Install dependencies
         run: npm ci
-
+      - name: Check Expo SDK dependencies
+        run: npx --no-install expo install --check
       - name: Run lint
         run: npm run lint
-
       - name: TypeScript check
-        run: npx tsc --noEmit
+        run: npx --no-install tsc --noEmit
+      - name: Run tests
+        run: npm test -- --ci --runInBand
+      - name: Export iOS JavaScript bundle
+        run: npx --no-install expo export --platform ios --output-dir dist
 
+  backend-quality:
+    name: Backend quality
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Verify npm version
+        run: test "$(npm --version)" = "10.9.9"
+      - name: Install dependencies
+        run: npm ci
       - name: Run tests
         run: npm test
+
+  quality-gate:
+    name: CI Gate
+    if: always()
+    needs: [changes, app-quality, backend-quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Require successful applicable checks
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          APP_REQUIRED: ${{ needs.changes.outputs.app }}
+          APP_RESULT: ${{ needs.app-quality.result }}
+          BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
+          BACKEND_RESULT: ${{ needs.backend-quality.result }}
+        run: |
+          node <<'NODE'
+          if (process.env.CHANGES_RESULT !== 'success') {
+            throw new Error('Change detection did not succeed');
+          }
+          for (const scope of ['APP', 'BACKEND']) {
+            const required = process.env[`${scope}_REQUIRED`];
+            const result = process.env[`${scope}_RESULT`];
+            if (!['true', 'false'].includes(required)) {
+              throw new Error(`${scope} has no valid check requirement`);
+            }
+            const expected = required === 'true' ? 'success' : 'skipped';
+            if (result !== expected) {
+              throw new Error(`${scope} expected ${expected}, received ${result}`);
+            }
+          }
+          NODE
 

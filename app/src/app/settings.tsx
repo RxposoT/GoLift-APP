@@ -278,7 +278,7 @@ export default function Settings() {
         <SectionHeader title="Aparência" />
         <Card padding={spacing.lg} style={{ marginBottom: 24 }}>
           <Text variant="footnote" color="textSecondary" style={{ marginBottom: 14 }}>
-            Escolhe o tema da aplicação. "Sistema" segue as definições do dispositivo.
+            {'Escolhe o tema da aplicação. "Sistema" segue as definições do dispositivo.'}
           </Text>
           <View style={{ flexDirection: "row", gap: 10 }}>
             <ThemePill label="Sistema" icon="phone-portrait-outline" value="system" current={preference} onSelect={setPreference} />
