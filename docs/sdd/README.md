@@ -57,4 +57,3 @@ A10 faz a revisão transversal dos candidatos integrados e das evidências. Uplo
 - A preparação iOS e os recibos de build constam do [runbook de release](../release-workflow.md), integrado pelos PRs #20/#21.
 - Evidências locais e remotas incluem 37 testes app, 29 backend, 13 de governance, 7 de seleção CI e 8 guards de release.
 - Lint mantém 101 warnings conhecidos. Validação nativa iPhone e configuração dos serviços de staging continuam pendentes.
-
