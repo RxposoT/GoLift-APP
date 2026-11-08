@@ -12,56 +12,84 @@ function isValidPremium(profile) {
 
 // Submete feedback pós-treino, guarda na BD e obtém resposta personalizada da IA
 async function submitFeedback(userId, data) {
-  const { session_id, sentir_score, dor_zones, dor_intensidade, energia_treino, notas } = data;
+  const { session_id, sentir_score, dor_zones, dor_intensidade, energia_treino, notas } = data || {};
   if (!session_id) return { status: 400, erro: 'session_id em falta' };
+  if (!['number', 'string'].includes(typeof session_id) || !/^\d+$/.test(String(session_id)) ||
+      !Number.isSafeInteger(Number(session_id)) || Number(session_id) <= 0) {
+    return { status: 400, erro: 'session_id inválido' };
+  }
+
+  // Confirmar o agregado por metadados mínimos antes de ler detalhes ou escrever.
+  const { data: ownedSession, error: sessionError } = await supabaseAdmin
+    .from('workout_sessions').select('id, workout_id')
+    .eq('id', session_id).eq('user_id', userId).maybeSingle();
+  if (sessionError) return { status: 500, erro: 'Erro ao consultar sessão' };
+  if (!ownedSession) return { status: 404, erro: 'Sessão não encontrada' };
+  const { data: ownedWorkout, error: workoutError } = await supabaseAdmin
+    .from('workouts').select('id')
+    .eq('id', ownedSession.workout_id).eq('user_id', userId).maybeSingle();
+  if (workoutError) return { status: 500, erro: 'Erro ao consultar treino' };
+  if (!ownedWorkout) return { status: 404, erro: 'Sessão não encontrada' };
 
   // 1. Verificar perfil e plano premium
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('plano, plano_ativo_ate')
     .eq('id', userId)
     .single();
 
+  if (profileError) return { status: 500, erro: 'Erro ao consultar perfil' };
   if (!profile) return { status: 404, erro: 'Utilizador não encontrado' };
   const temPremium = isValidPremium(profile);
   if (!temPremium) return { status: 403, erro: 'Plano GoLift Pro necessário', codigo: 'PLANO_NECESSARIO' };
 
-  // 2. Guardar feedback na BD (upsert para evitar duplicados por sessão)
-  await supabaseAdmin.from('workout_feedback').upsert({
-    session_id, user_id: userId, sentir_score, dor_zones, dor_intensidade, energia_treino, notas,
-  }, { onConflict: 'session_id' });
-
   // 3. Buscar dados da sessão e histórico de feedbacks para contexto da IA
-  const { data: sessao } = await supabaseAdmin
+  const { data: sessao, error: detailError } = await supabaseAdmin
     .from('workout_sessions')
-    .select('data_inicio, data_fim, duracao_segundos, workout:workouts(nome), workout_sets(repeticoes, peso, exercise:exercises(nome, grupo_tipo))')
+    .select('data_inicio, data_fim, duracao_segundos, workout:workouts!inner(nome), workout_sets(repeticoes, peso, exercise:exercises(nome, grupo_tipo))')
     .eq('id', session_id)
-    .single();
+    .eq('user_id', userId).eq('workout_id', ownedSession.workout_id)
+    .eq('workout.user_id', userId).maybeSingle();
+  if (detailError) return { status: 500, erro: 'Erro ao consultar sessão' };
+  if (!sessao) return { status: 404, erro: 'Sessão não encontrada' };
 
-  const { data: readiness } = await supabaseAdmin
+  const { data: readiness, error: readinessError } = await supabaseAdmin
     .from('daily_readiness')
     .select('prontidao_score, sono_horas, sono_qualidade, energia, stress, musculo_dolorido')
     .eq('user_id', userId)
     .order('data', { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (readinessError) return { status: 500, erro: 'Erro ao consultar prontidão' };
 
-  const { data: sessoesRecentes } = await supabaseAdmin
+  const { data: sessoesRecentes, error: recentError } = await supabaseAdmin
     .from('workout_sessions')
-    .select('data_fim, duracao_segundos, workout:workouts(nome)')
-    .eq('user_id', userId)
+    .select('data_fim, duracao_segundos, workout:workouts!inner(nome)')
+    .eq('user_id', userId).eq('workout.user_id', userId)
     .not('data_fim', 'is', null)
     .neq('id', session_id)
     .order('data_fim', { ascending: false })
     .limit(5);
+  if (recentError || !sessoesRecentes) return { status: 500, erro: 'Erro ao consultar sessões recentes' };
 
-  const { data: historico } = await supabaseAdmin
+  const { data: historico, error: historyError } = await supabaseAdmin
     .from('workout_feedback')
-    .select('sentir_score, dor_zones, energia_treino, created_at')
-    .eq('user_id', userId)
+    .select('sentir_score, dor_zones, energia_treino, created_at, session:workout_sessions!inner(workout:workouts!inner(id))')
+    .eq('user_id', userId).eq('session.user_id', userId).eq('session.workout.user_id', userId)
     .neq('session_id', session_id)
     .order('created_at', { ascending: false })
     .limit(10);
+  if (historyError || !historico) return { status: 500, erro: 'Erro ao consultar feedback anterior' };
+
+  const { data: previous, error: previousError } = await supabaseAdmin
+    .from('workout_feedback').select('user_id').eq('session_id', session_id).maybeSingle();
+  if (previousError) return { status: 500, erro: 'Erro ao consultar feedback' };
+  if (previous && previous.user_id !== userId) return { status: 404, erro: 'Sessão não encontrada' };
+  // O contrato A preserva upsert. A atomicidade com alterações concorrentes pertence a GL-003B/GL-005.
+  const { data: saved, error: saveError } = await supabaseAdmin.from('workout_feedback').upsert({
+    session_id, user_id: userId, sentir_score, dor_zones, dor_intensidade, energia_treino, notas,
+  }, { onConflict: 'session_id' }).select('session_id').single();
+  if (saveError || !saved) return { status: 500, erro: 'Erro ao guardar feedback' };
 
   // 4. Construir prompt com feedback atual + histórico para personalização
   const seriesResumo = (sessao?.workout_sets || [])
