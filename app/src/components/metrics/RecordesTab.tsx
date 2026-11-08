@@ -72,7 +72,7 @@ export default function RecordesTab({ theme, records, formatDate, userId }: Reco
   const plotHeight = chartHeight - paddingTop - 25;
 
   const chartPoints = React.useMemo(() => {
-    if (history.length === 0) return [];
+    if (history.length === 0) return { points: [], yMin: 0, yMax: 10 };
     
     // Find unique dates or aggregate maximum weight per date to avoid duplicates at same X
     const aggregatedMap = new Map<string, number>();
