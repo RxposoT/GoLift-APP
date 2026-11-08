@@ -1,36 +1,37 @@
 {
-  "cli": {
-    "version": ">= 16.0.0"
-  },
+  "cli": { "version": "27.5.0", "appVersionSource": "remote" },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      },
+      "environment": "development",
       "env": {
-        "EXPO_PUBLIC_API_IP": "goliftapp.me",
+        "EXPO_PUBLIC_ENVIRONMENT": "local",
+        "EXPO_PUBLIC_BACKEND_URL": "http://localhost:3001",
         "EXPO_PUBLIC_IS_PRODUCTION": "false"
       }
     },
-    "preview": {
-      "android": {
-        "buildType": "apk"
-      },
+    "beta": {
+      "distribution": "store",
+      "environment": "preview",
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_IP": "goliftapp.me",
-        "EXPO_PUBLIC_IS_PRODUCTION": "true"
+        "EXPO_PUBLIC_ENVIRONMENT": "staging",
+        "EXPO_PUBLIC_IS_PRODUCTION": "false"
       }
     },
     "production": {
-      "android": {
-        "buildType": "apk"
-      },
+      "distribution": "store",
+      "environment": "production",
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_IP": "goliftapp.me",
+        "EXPO_PUBLIC_ENVIRONMENT": "production",
         "EXPO_PUBLIC_IS_PRODUCTION": "true"
       }
     }
+  },
+  "submit": {
+    "qa": { "ios": {} },
+    "production": { "ios": {} }
   }
 }
