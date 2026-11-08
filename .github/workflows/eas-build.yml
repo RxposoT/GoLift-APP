@@ -1,39 +1,202 @@
-name: EAS Build
+name: iOS Release Gates
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
-      profile:
-        description: "Build profile (preview / production)"
+      stage:
+        type: choice
+        description: Etapa de release
         required: true
-        default: preview
+        options: [beta-build, beta-upload-qa, beta-distribution-review, production-build, production-upload]
+      source_sha:
+        description: SHA completo integrado com CI aprovada
+        required: true
+      build_id:
+        description: ID EAS obrigatório para upload ou revisão de distribuição
+      build_run_id:
+        description: Execução GitHub que produziu o build e o recibo
+      qa_evidence_url:
+        description: URL do relatório QA para distribuir ao grupo interno
+
+permissions:
+  contents: read
+  actions: read
+  deployments: read
+
+concurrency:
+  group: ios-release-${{ inputs.stage }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: EAS ${{ github.event.inputs.profile || 'preview' }}
+  preflight:
     runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.verify.outputs.environment }}
+      profile: ${{ steps.verify.outputs.profile }}
+      artifact_id: ${{ steps.verify.outputs.artifact_id }}
+      build_run_attempt: ${{ steps.verify.outputs.build_run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Validate release guards
+        run: node --test .github/release/*.test.cjs
+      - uses: actions/github-script@v7
+        id: verify
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          STAGE: ${{ inputs.stage }}
+          BUILD_ID: ${{ inputs.build_id }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          QA_EVIDENCE_URL: ${{ inputs.qa_evidence_url }}
+        with:
+          script: |
+            const { verifyCandidate } = require('./.github/release/guard.cjs');
+            const { verifyBuildRun } = require('./.github/release/receipt.cjs');
+            const target = await verifyCandidate(github, context, {
+              stage: process.env.STAGE, sha: process.env.SOURCE_SHA,
+            });
+            if (!process.env.STAGE.endsWith('-build') &&
+                !/^[a-f0-9-]{36}$/.test(process.env.BUILD_ID || '')) {
+              throw new Error('Fornecer ID EAS do build candidato');
+            }
+            if (!process.env.STAGE.endsWith('-build')) {
+              const receipt = await verifyBuildRun(github, context, {
+                runId: process.env.BUILD_RUN_ID, sha: process.env.SOURCE_SHA,
+                branch: target.branch, profile: target.profile,
+              });
+              core.setOutput('artifact_id', receipt.artifactId);
+              core.setOutput('build_run_attempt', receipt.runAttempt);
+            }
+            if (process.env.STAGE === 'beta-distribution-review') {
+              const evidence = new URL(process.env.QA_EVIDENCE_URL);
+              if (evidence.origin !== 'https://github.com' ||
+                  !evidence.pathname.startsWith(`/${context.repo.owner}/${context.repo.repo}/`)) {
+                throw new Error('Anexar relatório QA no repositório');
+              }
+            }
+            core.setOutput('environment', target.environment);
+            core.setOutput('profile', target.profile);
+
+  release:
+    needs: preflight
+    runs-on: ubuntu-latest
+    environment: ${{ needs.preflight.outputs.environment }}
     defaults:
       run:
         working-directory: app
-
+    env:
+      STAGE: ${{ inputs.stage }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      BUILD_ID: ${{ inputs.build_id }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      BUILD_RUN_ATTEMPT: ${{ needs.preflight.outputs.build_run_attempt }}
+      QA_EVIDENCE_URL: ${{ inputs.qa_evidence_url }}
+      PROFILE: ${{ needs.preflight.outputs.profile }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      RELEASE_INFRA_READY: ${{ vars.RELEASE_INFRA_READY }}
+      TESTFLIGHT_QA_ISOLATED: ${{ vars.TESTFLIGHT_QA_ISOLATED }}
+      EXPO_PUBLIC_BACKEND_URL: ${{ vars.EXPO_PUBLIC_BACKEND_URL }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_POSTHOG_HOST: ${{ vars.EXPO_PUBLIC_POSTHOG_HOST }}
+      EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN }}
+      PRODUCTION_BACKEND_URL: ${{ vars.PRODUCTION_BACKEND_URL }}
+      PRODUCTION_SUPABASE_URL: ${{ vars.PRODUCTION_SUPABASE_URL }}
+      IOS_BUNDLE_IDENTIFIER: ${{ vars.IOS_BUNDLE_IDENTIFIER }}
+      ASC_APP_ID: ${{ vars.ASC_APP_ID }}
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "npm"
+          node-version-file: .nvmrc
+          cache: npm
           cache-dependency-path: app/package-lock.json
-
-      - name: Install EAS CLI
-        run: npm install -g eas-cli
-
-      - name: Install dependencies
+      - name: Validate environment and prepare explicit EAS configuration
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { configureBuild } = require('../.github/release/guard.cjs');
+          const { expectation } = require('../.github/release/receipt.cjs');
+          const config = configureBuild(require('./eas.json'), process.env, process.env.PROFILE);
+          const app = require('./app.json');
+          app.expo.ios.bundleIdentifier = process.env.IOS_BUNDLE_IDENTIFIER;
+          if (process.env.PROFILE === 'beta') app.expo.ios.supportsTablet = false;
+          if (!process.env.EXPO_TOKEN) throw new Error('Configurar EXPO_TOKEN no environment');
+          if (process.env.STAGE.includes('upload') || process.env.STAGE.includes('distribution')) {
+            if (!/^\d+$/.test(process.env.ASC_APP_ID || '')) throw new Error('Configurar ASC_APP_ID');
+            if (process.env.PROFILE === 'beta' && process.env.TESTFLIGHT_QA_ISOLATED !== 'true') {
+              throw new Error('Confirmar isolamento do grupo QA no App Store Connect');
+            }
+            for (const profile of Object.values(config.submit)) profile.ios.ascAppId = process.env.ASC_APP_ID;
+          }
+          fs.writeFileSync('eas.json', JSON.stringify(config, null, 2));
+          fs.writeFileSync('app.json', JSON.stringify(app, null, 2));
+          fs.writeFileSync('release-expectation.json', JSON.stringify(expectation(config, app, process.env)));
+          NODE
+      - uses: actions/download-artifact@v4
+        if: ${{ !endsWith(inputs.stage, '-build') }}
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run_id }}
+          artifact-ids: ${{ needs.preflight.outputs.artifact_id }}
+          merge-multiple: true
+          path: app/.release-receipt
+      - name: Validate trusted build receipt
+        if: ${{ !endsWith(inputs.stage, '-build') }}
+        run: |
+          node <<'NODE'
+          require('../.github/release/receipt.cjs').validateReceipt(
+            require('./.release-receipt/build-receipt.json'), require('./release-expectation.json'), {
+              buildId: process.env.BUILD_ID, runId: process.env.BUILD_RUN_ID,
+              attempt: process.env.BUILD_RUN_ATTEMPT, repository: process.env.GITHUB_REPOSITORY,
+            });
+          NODE
+      - name: Install application dependencies
+        if: endsWith(inputs.stage, '-build')
         run: npm ci
-
-      - name: Build
-        run: eas build --platform android --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Build iOS candidate
+        if: endsWith(inputs.stage, '-build')
+        run: npx --yes eas-cli@27.5.0 build --platform ios --profile "$PROFILE" --non-interactive --wait --json > build.json
+      - name: Verify existing build provenance
+        if: ${{ !endsWith(inputs.stage, '-build') }}
+        run: |
+          npx --yes eas-cli@27.5.0 build:view "$BUILD_ID" --json > build.json
+      - name: Validate EAS build provenance
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const expected = require('./release-expectation.json');
+          const build = require('../.github/release/guard.cjs').validateBuild(
+            require('./build.json'), expected, process.env.BUILD_ID || undefined);
+          if (process.env.STAGE.endsWith('-build')) {
+            const receipt = require('../.github/release/receipt.cjs').createReceipt(build, expected, {
+              id: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT,
+              repository: process.env.GITHUB_REPOSITORY,
+            });
+            fs.writeFileSync('build-receipt.json', JSON.stringify(receipt, null, 2));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `EAS build ID ${build.id}\n`);
+          }
+          NODE
+      - name: Upload exclusively to TestFlight QA
+        if: inputs.stage == 'beta-upload-qa'
+        run: npx --yes eas-cli@27.5.0 submit --platform ios --id "$BUILD_ID" --profile qa --groups "GoLift QA" --non-interactive --wait
+      - name: Upload production candidate to App Store Connect
+        if: inputs.stage == 'production-upload'
+        run: npx --yes eas-cli@27.5.0 submit --platform ios --id "$BUILD_ID" --profile production --non-interactive --wait
+      - name: Record gate for internal distribution
+        if: inputs.stage == 'beta-distribution-review'
+        run: |
+          printf '%s\n' "## QA evidence for internal distribution" "SHA: $SOURCE_SHA" "EAS build: $BUILD_ID" "QA: $QA_EVIDENCE_URL" "Next manual action: assign this processed build to GoLift Internal in App Store Connect." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: endsWith(inputs.stage, '-build')
+        with:
+          name: ios-build-receipt-${{ inputs.source_sha }}-${{ needs.preflight.outputs.profile }}
+          path: app/build-receipt.json
+          if-no-files-found: error
