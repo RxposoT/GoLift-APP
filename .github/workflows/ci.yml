@@ -21,6 +21,7 @@ jobs:
     outputs:
       app: ${{ steps.paths.outputs.app }}
       backend: ${{ steps.paths.outputs.backend }}
+      database: ${{ steps.paths.outputs.database }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,42 +29,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+      - name: Test quality check selection
+        run: node --test scripts/ci-paths.test.mjs
       - id: paths
         name: Select checks for this revision
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           FULL_CHECKS: ${{ github.base_ref == 'main' || github.ref == 'refs/heads/main' }}
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const { execFileSync } = require('node:child_process');
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          import { selectChecks } from './scripts/ci-paths.mjs';
           const base = process.env.BASE_SHA;
-          const dedicatedChecks = new Set([
-            'scripts/governance.mjs',
-            'scripts/governance.test.mjs',
-            'scripts/worktree.mjs',
-            '.github/workflows/governance.yml',
-            '.github/workflows/eas-build.yml',
-            '.gitignore',
-          ]);
-          let app = false;
-          let backend = false;
-          if (process.env.FULL_CHECKS === 'true' || !base || /^0+$/.test(base)) {
-            app = backend = true;
-          } else {
-            const files = execFileSync('git', ['diff', '--name-only', '-z', base, 'HEAD'], {
-              encoding: 'utf8',
-            }).split('\0').filter(Boolean);
-            for (const file of files) {
-              if (/\.md$/i.test(file)) continue;
-              if (dedicatedChecks.has(file) || file.startsWith('.githooks/') ||
-                  file.startsWith('.github/release/')) continue;
-              if (file.startsWith('app/')) app = true;
-              else if (file.startsWith('backend/')) backend = true;
-              else app = backend = true;
-            }
+          const initial = !base || /^0+$/.test(base);
+          const args = initial ? ['ls-files', '-z']
+            : ['diff', '--name-only', '--no-renames', '-z', base, 'HEAD'];
+          const files = execFileSync('git', args, { encoding: 'utf8' }).split('\0').filter(Boolean);
+          const checks = selectChecks(files, process.env.FULL_CHECKS === 'true' || initial);
+          for (const [name, required] of Object.entries(checks)) {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${required}\n`);
           }
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `app=${app}\nbackend=${backend}\n`);
           NODE
 
   app-quality:
@@ -122,10 +108,24 @@ jobs:
       - name: Run tests
         run: npm test
 
+  database-readiness:
+    name: Database readiness
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Require a ratified database baseline and real SQL validation
+        run: node --input-type=module -e "import { assertDatabaseReadiness } from './scripts/ci-paths.mjs'; assertDatabaseReadiness();"
+
   quality-gate:
     name: CI Gate
     if: always()
-    needs: [changes, app-quality, backend-quality]
+    needs: [changes, app-quality, backend-quality, database-readiness]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -140,21 +140,11 @@ jobs:
           APP_RESULT: ${{ needs.app-quality.result }}
           BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
           BACKEND_RESULT: ${{ needs.backend-quality.result }}
+          DATABASE_REQUIRED: ${{ needs.changes.outputs.database }}
+          DATABASE_RESULT: ${{ needs.database-readiness.result }}
         run: |
-          node <<'NODE'
-          if (process.env.CHANGES_RESULT !== 'success') {
-            throw new Error('Change detection did not succeed');
-          }
-          for (const scope of ['APP', 'BACKEND']) {
-            const required = process.env[`${scope}_REQUIRED`];
-            const result = process.env[`${scope}_RESULT`];
-            if (!['true', 'false'].includes(required)) {
-              throw new Error(`${scope} has no valid check requirement`);
-            }
-            const expected = required === 'true' ? 'success' : 'skipped';
-            if (result !== expected) {
-              throw new Error(`${scope} expected ${expected}, received ${result}`);
-            }
-          }
+          node --input-type=module <<'NODE'
+          import { assertQualityResults } from './scripts/ci-paths.mjs';
+          assertQualityResults(process.env);
           NODE
 
