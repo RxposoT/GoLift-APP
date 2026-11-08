@@ -112,7 +112,8 @@ for (const config of configs) {
   });
   test(`${config.kind}: malformed IDs and missing bodies do not query or mutate`, async () => {
     const field = config.kind === 'feedback' ? 'session_id' : 'workout_id';
-    for (const body of [undefined, null, {}, { [field]: {} }, { [field]: -1 }, { [field]: 1.5 }, { [field]: true }]) {
+    const invalidIds = [{}, -1, 1.5, true, 9007199254740992, '9223372036854775808', '0', '-1', '1.5', '1e3'];
+    for (const body of [undefined, null, {}, ...invalidIds.map(value => ({ [field]: value }))]) {
       const h = harness(config.kind, []);
       assert.equal((await h.run(body)).status, 400);
       assert.equal(h.calls.length + h.writes.length + h.prompts.length, 0);
@@ -190,12 +191,15 @@ test('controllers preserve successful response bodies for the authenticated owne
 });
 test('numeric string IDs retain compatibility without accepting arbitrary strings', async () => {
   for (const config of configs) {
-    const steps = config.steps();
-    for (const entry of steps) entry.filters = entry.filters.map(([name, value]) =>
-      ['id', 'session_id'].includes(name) && value === (config.kind === 'feedback' ? 1 : 2) ? [name, String(value)] : [name, value]);
-    const h = harness(config.kind, steps);
-    const body = config.kind === 'feedback' ? { session_id: '1' } : { workout_id: '2' };
-    assert.equal((await h.run(body)).sucesso, true);
+    for (const id of ['1', '9007199254740993', '9223372036854775807']) {
+      const steps = config.steps();
+      for (const entry of steps) entry.filters = entry.filters.map(([name, value]) =>
+        ['id', 'session_id'].includes(name) && value === (config.kind === 'feedback' ? 1 : 2) ? [name, id] : [name, value]);
+      const h = harness(config.kind, steps);
+      const body = config.kind === 'feedback' ? { session_id: id } : { workout_id: id };
+      assert.equal((await h.run(body)).sucesso, true);
+      if (config.kind === 'feedback') assert.equal(h.writes[0].payload.session_id, id);
+    }
   }
 });
 function reportSteps() {

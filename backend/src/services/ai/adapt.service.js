@@ -4,6 +4,7 @@
 
 const supabaseAdmin = require('../../config/supabase');
 const { geminiGenerate } = require('../gemini.service');
+const { isResourceId } = require('./resource-id');
 
 // Verifica se o utilizador tem plano premium ativo
 function isValidPremium(profile) {
@@ -14,8 +15,7 @@ function isValidPremium(profile) {
 async function adaptWorkout(userId, data) {
   const { workout_id } = data || {};
   if (!workout_id) return { status: 400, erro: 'workout_id em falta' };
-  if (!['number', 'string'].includes(typeof workout_id) || !/^\d+$/.test(String(workout_id)) ||
-      !Number.isSafeInteger(Number(workout_id)) || Number(workout_id) <= 0) {
+  if (!isResourceId(workout_id)) {
     return { status: 400, erro: 'workout_id inválido' };
   }
   const { data: ownedWorkout, error: ownerError } = await supabaseAdmin

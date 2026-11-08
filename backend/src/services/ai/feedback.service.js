@@ -4,6 +4,7 @@
 
 const supabaseAdmin = require('../../config/supabase');
 const { geminiGenerate } = require('../gemini.service');
+const { isResourceId } = require('./resource-id');
 
 // Verifica se o utilizador tem plano premium ativo
 function isValidPremium(profile) {
@@ -14,8 +15,7 @@ function isValidPremium(profile) {
 async function submitFeedback(userId, data) {
   const { session_id, sentir_score, dor_zones, dor_intensidade, energia_treino, notas } = data || {};
   if (!session_id) return { status: 400, erro: 'session_id em falta' };
-  if (!['number', 'string'].includes(typeof session_id) || !/^\d+$/.test(String(session_id)) ||
-      !Number.isSafeInteger(Number(session_id)) || Number(session_id) <= 0) {
+  if (!isResourceId(session_id)) {
     return { status: 400, erro: 'session_id inválido' };
   }
 
