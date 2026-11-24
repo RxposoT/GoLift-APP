@@ -12,12 +12,13 @@ function isValidPremium(profile) {
 
 // Consulta o plano do mês atual — devolve o cached ou indica que pode gerar
 async function getPlan(userId) {
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('plano, plano_ativo_ate')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
+  if (profileError) return { status: 500, erro: 'Erro ao consultar perfil' };
   if (!profile) return { status: 404, erro: 'Utilizador não encontrado' };
   if (!isValidPremium(profile)) return { status: 403, erro: 'Plano GoLift Pro necessário', codigo: 'PLANO_NECESSARIO' };
 
@@ -25,13 +26,14 @@ async function getPlan(userId) {
   const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
 
   // Verificar se já existe plano para este mês
-  const { data: cached } = await supabaseAdmin
+  const { data: cached, error: cacheError } = await supabaseAdmin
     .from('ai_plans')
     .select('conteudo, criado_em, descanso_segundos')
     .eq('user_id', userId)
     .eq('mes', mesAtual)
     .maybeSingle();
 
+  if (cacheError) return { status: 500, erro: 'Erro ao consultar plano' };
   if (cached) {
     return {
       sucesso: true,
@@ -53,12 +55,13 @@ async function generatePlan(userId, params) {
   const { diasPorSemana = 4, tempoTreino = 60, objetivo, targets = [], condicoes = '', descansoEntreSeriesSegundos = 90 } = params;
 
   // Buscar perfil completo com todos os campos relevantes para o treino
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('plano, plano_ativo_ate, peso, altura, idade, objetivo, peso_alvo, treino_dias_semana, treino_duracao, treino_equipamento, treino_nivel, treino_split, lesoes, preferencias_exercicios')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
+  if (profileError) return { status: 500, erro: 'Erro ao consultar perfil' };
   if (!profile) return { status: 404, erro: 'Utilizador não encontrado' };
   if (!isValidPremium(profile)) return { status: 403, erro: 'Plano GoLift Pro necessário', codigo: 'PLANO_NECESSARIO' };
 
@@ -67,12 +70,13 @@ async function generatePlan(userId, params) {
   const mesNome = agora.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
 
   // Arquiva plano anterior (se existir) para permitir regeneração
-  await supabaseAdmin
+  const { error: archiveError } = await supabaseAdmin
     .from('ai_plans')
     .update({ arquivado: true })
     .eq('user_id', userId)
     .eq('mes', mesAtual);
 
+  if (archiveError) return { status: 500, erro: 'Erro ao arquivar plano' };
   // Construir strings condicionais para o prompt
   const objFinal = objetivo || profile.objetivo || 'não definido';
   const targetStr = targets.length > 0 ? `Dar mais ênfase a: ${targets.join(', ')}.` : '';
@@ -122,15 +126,15 @@ Responde APENAS com JSON válido (sem markdown, sem código blocks) com exatamen
   const parametros = JSON.stringify({ diasPorSemana, tempoTreino, objetivo: objFinal, targets, condicoes });
 
   // Guardar o novo plano na base de dados
-  const { error: insertErr } = await supabaseAdmin.from('ai_plans').insert({
+  const { data: saved, error: insertErr } = await supabaseAdmin.from('ai_plans').insert({
     user_id: userId,
     mes: mesAtual,
     conteudo: plano,
     parametros,
     descanso_segundos: descansoEntreSeriesSegundos,
-  });
+  }).select('user_id').single();
 
-  if (insertErr) throw insertErr;
+  if (insertErr || !saved) return { status: 500, erro: 'Erro ao guardar plano' };
 
   return { sucesso: true, plano, mes: mesAtual, descanso_segundos: descansoEntreSeriesSegundos, pode_gerar: false };
 }
